@@ -19,9 +19,17 @@ WebKitWebView* Browser::get_current_webview() {
     if (!WEBKIT_IS_WEB_VIEW(wv)) return nullptr;
     return WEBKIT_WEB_VIEW(wv);
 }
-
 void Browser::new_tab(const std::string& url) {
-    GtkWidget* wv = webkit_web_view_new();
+    WebKitWebContext* ctx = webkit_web_context_new();
+    GtkWidget* wv = GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+        "web-context", ctx,
+        nullptr));
+    g_object_unref(ctx);
+
+    WebKitSettings* settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(wv));
+    webkit_settings_set_enable_smooth_scrolling(settings, FALSE);
+    webkit_settings_set_javascript_can_access_clipboard(settings, FALSE);
+
     gtk_widget_set_vexpand(wv, TRUE);
     gtk_widget_set_hexpand(wv, TRUE);
 
