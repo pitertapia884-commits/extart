@@ -32,4 +32,5 @@ private:
     static void on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer user_data);
     static void on_switch_page(GtkNotebook* notebook, GtkWidget* page, guint page_num, gpointer user_data);
     static void on_close_tab(GtkWidget* wv, GtkWidget* button);
+    static void on_settings(GtkWidget* widget, gpointer user_data);
 };

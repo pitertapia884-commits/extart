@@ -20,11 +20,11 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 32px;
+            gap: 24px;
         }
 
         .logo {
-            font-size: 64px;
+            font-size: 72px;
         }
 
         .title {
@@ -39,72 +39,11 @@
             letter-spacing: 3px;
             color: #444;
         }
-
-        .search-box {
-            display: flex;
-            gap: 8px;
-            margin-top: 16px;
-        }
-
-        input {
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-            border: 1px solid #8b0000;
-            border-radius: 4px;
-            padding: 10px 16px;
-            font-family: monospace;
-            font-size: 14px;
-            width: 480px;
-            outline: none;
-        }
-
-        input:focus {
-            border-color: #c0392b;
-        }
-
-        button {
-            background-color: #8b0000;
-            color: #e0e0e0;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-family: monospace;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #c0392b;
-        }
     </style>
 </head>
 <body>
     <div class="logo">🍞</div>
     <div class="title">EXTART</div>
     <div class="subtitle">simple. fast. yours.</div>
-
-    <div class="search-box">
-        <input type="text" id="search" placeholder="buscar o escribir una URL..." autofocus />
-        <button onclick="go()">ir</button>
-    </div>
-
-    <script>
-        function go() {
-            const val = document.getElementById("search").value.trim();
-            if (!val) return;
-
-            if (val.startsWith("http://") || val.startsWith("https://")) {
-                window.location.href = val;
-            } else if (val.includes(".") && !val.includes(" ")) {
-                window.location.href = "https://" + val;
-            } else {
-                window.location.href = "https://duckduckgo.com/?q=" + encodeURIComponent(val);
-            }
-        }
-
-        document.getElementById("search").addEventListener("keydown", function(e) {
-            if (e.key === "Enter") go();
-        });
-    </script>
 </body>
 </html>

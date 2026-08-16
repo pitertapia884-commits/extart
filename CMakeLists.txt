@@ -11,6 +11,7 @@ pkg_check_modules(WEBKIT REQUIRED webkitgtk-6.0)
 add_executable(extart
     src/main.cpp
     src/browser.cpp
+    src/config.cpp
 )
 
 target_include_directories(extart PRIVATE

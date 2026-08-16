@@ -1,10 +1,12 @@
 #include "browser.h"
+#include "config.h"
 #include <string>
 
 Browser* Browser::_instance = nullptr;
 
 Browser::Browser(GtkApplication* app) {
     _instance = this;
+    Config::get().load();
     build_ui(app);
 }
 
@@ -114,6 +116,9 @@ void Browser::build_ui(GtkApplication* app) {
     gtk_box_append(GTK_BOX(navbar), btn_reload);
     gtk_box_append(GTK_BOX(navbar), btn_home);
     gtk_box_append(GTK_BOX(navbar), url_bar);
+    GtkWidget* btn_settings = gtk_button_new_with_label("⚙");
+    g_signal_connect(btn_settings, "clicked", G_CALLBACK(on_settings), NULL);
+    gtk_box_append(GTK_BOX(navbar), btn_settings);
 
     notebook = gtk_notebook_new();
     gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
@@ -159,6 +164,8 @@ void Browser::on_navigate(GtkWidget* widget, gpointer user_data) {
 
     const char* url = gtk_editable_get_text(GTK_EDITABLE(b->url_bar));
     std::string uri(url);
+    g_print("navegando a: %s\n", uri.c_str());
+    g_print("buscador: %s\n", Config::get().search_engine.c_str());
 
     if (uri.find("http://") == 0 || uri.find("https://") == 0 || uri.find("file://") == 0) {
         // URL completa
@@ -170,12 +177,11 @@ void Browser::on_navigate(GtkWidget* widget, gpointer user_data) {
             if (c == ' ') encoded += "+";
             else encoded += c;
         }
-        uri = "https://duckduckgo.com/?q=" + encoded;
+        uri = Config::get().search_engine + encoded;
     }
 
     webkit_web_view_load_uri(wv, uri.c_str());
 }
-
 void Browser::on_back(GtkWidget* widget, gpointer user_data) {
     WebKitWebView* wv = Browser::instance()->get_current_webview();
     if (wv) webkit_web_view_go_back(wv);
@@ -243,3 +249,76 @@ void Browser::on_switch_page(GtkNotebook* nb, GtkWidget* page, guint page_num, g
     if (uri) gtk_editable_set_text(GTK_EDITABLE(b->url_bar), uri);
 }
 // viva el yuri
+struct SettingsData {
+    GtkWidget* dropdown;
+    GtkWidget* entry_dl;
+    GtkWidget* dialog;
+};
+
+static void save_settings(GtkWidget* btn, gpointer data) {
+    SettingsData* sd = (SettingsData*)data;
+    Config& cfg = Config::get();
+
+    guint selected = gtk_drop_down_get_selected(GTK_DROP_DOWN(sd->dropdown));
+    if (selected == 0) cfg.search_engine = "https://duckduckgo.com/?q=";
+    else if (selected == 1) cfg.search_engine = "https://www.google.com/search?q=";
+    else cfg.search_engine = "https://www.bing.com/search?q=";
+
+    cfg.download_dir = gtk_editable_get_text(GTK_EDITABLE(sd->entry_dl));
+    cfg.save();
+
+    gtk_window_destroy(GTK_WINDOW(sd->dialog));
+    delete sd;
+}
+
+void Browser::on_settings(GtkWidget* widget, gpointer user_data) {
+    Browser* b = Browser::instance();
+
+    GtkWidget* dialog = gtk_window_new();
+    gtk_window_set_title(GTK_WINDOW(dialog), "Configuración — EXTART");
+    gtk_window_set_default_size(GTK_WINDOW(dialog), 400, 250);
+    gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(b->window));
+    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);
+
+    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    gtk_widget_set_margin_start(vbox, 20);
+    gtk_widget_set_margin_end(vbox, 20);
+    gtk_widget_set_margin_top(vbox, 20);
+    gtk_widget_set_margin_bottom(vbox, 20);
+
+    GtkWidget* lbl_engine = gtk_label_new("Buscador por defecto:");
+    gtk_widget_set_halign(lbl_engine, GTK_ALIGN_START);
+
+    GtkWidget* dropdown = gtk_drop_down_new_from_strings(
+        (const char*[]){"DuckDuckGo", "Google", "Bing", NULL}
+    );
+
+    Config& cfg = Config::get();
+    if (cfg.search_engine.find("google") != std::string::npos)
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 1);
+    else if (cfg.search_engine.find("bing") != std::string::npos)
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 2);
+    else
+        gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 0);
+
+    GtkWidget* lbl_dl = gtk_label_new("Carpeta de descargas:");
+    gtk_widget_set_halign(lbl_dl, GTK_ALIGN_START);
+
+    GtkWidget* entry_dl = gtk_entry_new();
+    gtk_editable_set_text(GTK_EDITABLE(entry_dl), cfg.download_dir.c_str());
+
+    GtkWidget* btn_save = gtk_button_new_with_label("Guardar");
+
+    gtk_box_append(GTK_BOX(vbox), lbl_engine);
+    gtk_box_append(GTK_BOX(vbox), dropdown);
+    gtk_box_append(GTK_BOX(vbox), lbl_dl);
+    gtk_box_append(GTK_BOX(vbox), entry_dl);
+    gtk_box_append(GTK_BOX(vbox), btn_save);
+
+    gtk_window_set_child(GTK_WINDOW(dialog), vbox);
+
+    SettingsData* sd = new SettingsData{dropdown, entry_dl, dialog};
+    g_signal_connect(btn_save, "clicked", G_CALLBACK(save_settings), sd);
+
+    gtk_window_present(GTK_WINDOW(dialog));
+}
