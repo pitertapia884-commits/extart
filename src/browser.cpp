@@ -16,6 +16,7 @@ WebKitWebView* Browser::get_current_webview() {
     int page = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
     if (page < 0) return nullptr;
     GtkWidget* wv = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), page);
+    if (!WEBKIT_IS_WEB_VIEW(wv)) return nullptr;
     return WEBKIT_WEB_VIEW(wv);
 }
 
@@ -28,7 +29,6 @@ void Browser::new_tab(const std::string& url) {
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(wv), url.c_str());
     g_signal_connect(wv, "load-changed", G_CALLBACK(on_load_changed), NULL);
 
-    // Etiqueta de la pestaña con botón cerrar
     GtkWidget* tab_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
     GtkWidget* tab_label = gtk_label_new("Nueva pestaña");
     GtkWidget* tab_close = gtk_button_new_with_label("✕");
@@ -37,11 +37,12 @@ void Browser::new_tab(const std::string& url) {
     gtk_box_append(GTK_BOX(tab_box), tab_label);
     gtk_box_append(GTK_BOX(tab_box), tab_close);
 
-    int index = gtk_notebook_append_page(GTK_NOTEBOOK(notebook), wv, tab_box);
+    // Insertar antes del botón +
+    int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+    int index = gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), wv, tab_box, n - 1);
     gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), index);
 
     g_object_set_data(G_OBJECT(wv), "tab-label", tab_label);
-
     g_signal_connect_swapped(tab_close, "clicked", G_CALLBACK(on_close_tab), wv);
 
     gtk_widget_set_visible(wv, TRUE);
@@ -49,12 +50,32 @@ void Browser::new_tab(const std::string& url) {
 
 void Browser::on_close_tab(GtkWidget* wv, GtkWidget* button) {
     Browser* b = Browser::instance();
+    int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(b->notebook));
+    
+    // Al menos 1 pestaña real debe quedar (más el placeholder)
+    if (n <= 2) return;
+    
     int index = gtk_notebook_page_num(GTK_NOTEBOOK(b->notebook), wv);
-    if (gtk_notebook_get_n_pages(GTK_NOTEBOOK(b->notebook)) > 1) {
-        gtk_notebook_remove_page(GTK_NOTEBOOK(b->notebook), index);
-    }
-}
+    if (index < 0) return;
 
+    // Decidir a qué pestaña ir antes de cerrar
+    // Ir a la izquierda si existe, si no a la derecha (pero nunca al placeholder)
+    int target = -1;
+    if (index > 0) {
+        GtkWidget* left = gtk_notebook_get_nth_page(GTK_NOTEBOOK(b->notebook), index - 1);
+        if (WEBKIT_IS_WEB_VIEW(left)) target = index - 1;
+    }
+    if (target < 0 && index < n - 1) {
+        GtkWidget* right = gtk_notebook_get_nth_page(GTK_NOTEBOOK(b->notebook), index + 1);
+        if (WEBKIT_IS_WEB_VIEW(right)) target = index + 1;
+    }
+
+    b->switching_tab = true;
+    if (target >= 0)
+        gtk_notebook_set_current_page(GTK_NOTEBOOK(b->notebook), target);
+    gtk_notebook_remove_page(GTK_NOTEBOOK(b->notebook), index);
+    b->switching_tab = false;
+}
 void Browser::build_ui(GtkApplication* app) {
     window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "EXTART");
@@ -91,19 +112,12 @@ void Browser::build_ui(GtkApplication* app) {
     gtk_box_append(GTK_BOX(navbar), btn_home);
     gtk_box_append(GTK_BOX(navbar), url_bar);
 
-   // Notebook
+    // Notebook
     notebook = gtk_notebook_new();
-
     gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
     gtk_widget_set_vexpand(notebook, TRUE);
     gtk_widget_set_hexpand(notebook, TRUE);
-
-    // Botón + al lado de las pestañas
-    GtkWidget* btn_newtab = gtk_button_new_with_label("+");
-    gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook), btn_newtab, GTK_PACK_END);
-    gtk_widget_set_visible(btn_newtab, TRUE);
-    g_signal_connect(btn_newtab, "clicked", G_CALLBACK(on_new_tab), NULL);
 
     g_signal_connect(notebook, "switch-page", G_CALLBACK(on_switch_page), NULL);
 
@@ -113,6 +127,16 @@ void Browser::build_ui(GtkApplication* app) {
     gtk_window_set_child(GTK_WINDOW(window), vbox);
 
     load_css();
+
+    // Primero agregar el botón + como pestaña falsa
+    GtkWidget* placeholder = gtk_label_new("");
+    GtkWidget* plus_btn = gtk_button_new_with_label("+");
+    gtk_widget_add_css_class(plus_btn, "newtab-btn");
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), placeholder, plus_btn);
+    gtk_widget_set_visible(placeholder, TRUE);
+    g_signal_connect(plus_btn, "clicked", G_CALLBACK(on_new_tab), NULL);
+
+    // Primera pestaña real
     new_tab();
 
     gtk_window_present(GTK_WINDOW(window));
@@ -195,11 +219,27 @@ void Browser::on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer
     }
 }
 
-void Browser::on_switch_page(GtkNotebook* notebook, GtkWidget* page, guint page_num, gpointer user_data) {
+void Browser::on_switch_page(GtkNotebook* nb, GtkWidget* page, guint page_num, gpointer user_data) {
     Browser* b = Browser::instance();
-    WebKitWebView* wv = WEBKIT_WEB_VIEW(page);
-    if (!wv) return;
 
+    if (b->switching_tab) return;
+
+    if (!WEBKIT_IS_WEB_VIEW(page)) {
+        int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(nb));
+        for (int i = n - 1; i >= 0; i--) {
+            GtkWidget* p = gtk_notebook_get_nth_page(GTK_NOTEBOOK(nb), i);
+            if (WEBKIT_IS_WEB_VIEW(p)) {
+                b->switching_tab = true;
+                gtk_notebook_set_current_page(GTK_NOTEBOOK(nb), i);
+                b->switching_tab = false;
+                break;
+            }
+        }
+        return;
+    }
+
+    WebKitWebView* wv = WEBKIT_WEB_VIEW(page);
     const char* uri = webkit_web_view_get_uri(wv);
     if (uri) gtk_editable_set_text(GTK_EDITABLE(b->url_bar), uri);
 }
+//viva el yuri

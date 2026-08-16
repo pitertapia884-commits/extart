@@ -11,6 +11,7 @@ public:
 
 private:
     static Browser* _instance;
+    bool switching_tab = false;
 
     GtkWidget* window;
     GtkWidget* notebook;
