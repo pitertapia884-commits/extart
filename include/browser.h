@@ -26,4 +26,5 @@ private:
     static void on_reload(GtkWidget* widget, gpointer user_data);
     static void on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer user_data);
     static void on_activate(GtkApplication* app, gpointer user_data);
+    static void on_home(GtkWidget* widget, gpointer user_data);
 };

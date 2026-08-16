@@ -29,6 +29,7 @@ void Browser::build_ui(GtkApplication* app) {
     GtkWidget* btn_back    = gtk_button_new_with_label("←");
     GtkWidget* btn_forward = gtk_button_new_with_label("→");
     GtkWidget* btn_reload  = gtk_button_new_with_label("↺");
+    GtkWidget* btn_home = gtk_button_new_with_label("⌂");
 
     url_bar = gtk_entry_new();
     gtk_editable_set_text(GTK_EDITABLE(url_bar), "https://duckduckgo.com");
@@ -38,10 +39,12 @@ void Browser::build_ui(GtkApplication* app) {
     g_signal_connect(btn_back,    "clicked",  G_CALLBACK(on_back),        NULL);
     g_signal_connect(btn_forward, "clicked",  G_CALLBACK(on_forward),     NULL);
     g_signal_connect(btn_reload,  "clicked",  G_CALLBACK(on_reload),      NULL);
+    g_signal_connect(btn_home, "clicked", G_CALLBACK(on_home), NULL);
 
     gtk_box_append(GTK_BOX(navbar), btn_back);
     gtk_box_append(GTK_BOX(navbar), btn_forward);
     gtk_box_append(GTK_BOX(navbar), btn_reload);
+    gtk_box_append(GTK_BOX(navbar), btn_home);
     gtk_box_append(GTK_BOX(navbar), url_bar);
 
     webview = webkit_web_view_new();
@@ -75,13 +78,23 @@ void Browser::on_navigate(GtkWidget* widget, gpointer user_data) {
     const char* url = gtk_editable_get_text(GTK_EDITABLE(b->url_bar));
     std::string uri(url);
 
-    if (uri.find("http://") != 0 && uri.find("https://") != 0) {
+    if (uri.find("http://") == 0 || uri.find("https://") == 0 || uri.find("file://") == 0) {
+        // Es una URL completa, navegar directo
+    } else if (uri.find(".") != std::string::npos && uri.find(" ") == std::string::npos) {
+        // Parece un dominio (tiene punto y no tiene espacios)
         uri = "https://" + uri;
+    } else {
+        // Es una búsqueda
+        std::string encoded;
+        for (char c : uri) {
+            if (c == ' ') encoded += "+";
+            else encoded += c;
+        }
+        uri = "https://duckduckgo.com/?q=" + encoded;
     }
 
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(b->webview), uri.c_str());
 }
-
 void Browser::on_back(GtkWidget* widget, gpointer user_data) {
     webkit_web_view_go_back(WEBKIT_WEB_VIEW(Browser::instance()->webview));
 }
@@ -93,7 +106,10 @@ void Browser::on_forward(GtkWidget* widget, gpointer user_data) {
 void Browser::on_reload(GtkWidget* widget, gpointer user_data) {
     webkit_web_view_reload(WEBKIT_WEB_VIEW(Browser::instance()->webview));
 }
-
+void Browser::on_home(GtkWidget* widget, gpointer user_data) {
+    Browser* b = Browser::instance();
+    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(b->webview), "file:///home/arch/extart/home.html");
+}
 void Browser::on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer user_data) {
     if (event == WEBKIT_LOAD_COMMITTED) {
         const char* uri = webkit_web_view_get_uri(wv);
