@@ -46,7 +46,7 @@ void Browser::build_ui(GtkApplication* app) {
 
     webview = webkit_web_view_new();
     gtk_widget_set_vexpand(webview, TRUE);
-    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), "https://duckduckgo.com");
+    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(webview), "file:///home/arch/extart/home.html");
 
     g_signal_connect(webview, "load-changed", G_CALLBACK(on_load_changed), NULL);
 
