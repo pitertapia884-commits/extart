@@ -20,11 +20,9 @@ private:
     void build_ui(GtkApplication* app);
     void load_css();
 
-    // Gestión de pestañas
     void new_tab(const std::string& url = "file:///home/arch/extart/home.html");
     WebKitWebView* get_current_webview();
 
-    // Callbacks estáticos
     static void on_navigate(GtkWidget* widget, gpointer user_data);
     static void on_back(GtkWidget* widget, gpointer user_data);
     static void on_forward(GtkWidget* widget, gpointer user_data);
