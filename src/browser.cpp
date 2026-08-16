@@ -37,6 +37,7 @@ void Browser::new_tab(const std::string& url) {
 
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(wv), url.c_str());
     g_signal_connect(wv, "load-changed", G_CALLBACK(on_load_changed), NULL);
+    g_signal_connect(wv, "decide-policy", G_CALLBACK(on_decide_policy), NULL);
 
     GtkWidget* tab_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
     GtkWidget* tab_label = gtk_label_new("Nueva pestaña");
@@ -321,4 +322,26 @@ void Browser::on_settings(GtkWidget* widget, gpointer user_data) {
     g_signal_connect(btn_save, "clicked", G_CALLBACK(save_settings), sd);
 
     gtk_window_present(GTK_WINDOW(dialog));
+}
+gboolean Browser::on_decide_policy(WebKitWebView* wv, WebKitPolicyDecision* decision, WebKitPolicyDecisionType type, gpointer user_data) {
+    if (type == WEBKIT_POLICY_DECISION_TYPE_RESPONSE) {
+        WebKitResponsePolicyDecision* response = WEBKIT_RESPONSE_POLICY_DECISION(decision);
+        if (!webkit_response_policy_decision_is_mime_type_supported(response)) {
+            WebKitURIRequest* request = webkit_response_policy_decision_get_request(response);
+            const char* uri = webkit_uri_request_get_uri(request);
+
+            std::string url(uri);
+            std::string filename = url.substr(url.find_last_of("/") + 1);
+            if (filename.empty()) filename = "descarga";
+
+            std::string dest = "file://" + Config::get().download_dir + "/" + filename;
+
+            WebKitDownload* download = webkit_web_view_download_uri(wv, uri);
+            webkit_download_set_destination(download, dest.c_str());
+
+            webkit_policy_decision_ignore(decision);
+            return TRUE;
+        }
+    }
+    return FALSE;
 }

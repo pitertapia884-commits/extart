@@ -33,4 +33,5 @@ private:
     static void on_switch_page(GtkNotebook* notebook, GtkWidget* page, guint page_num, gpointer user_data);
     static void on_close_tab(GtkWidget* wv, GtkWidget* button);
     static void on_settings(GtkWidget* widget, gpointer user_data);
+    static gboolean on_decide_policy(WebKitWebView* wv, WebKitPolicyDecision* decision, WebKitPolicyDecisionType type, gpointer user_data);
 };
