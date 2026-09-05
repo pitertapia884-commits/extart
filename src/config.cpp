@@ -1,56 +1,117 @@
-#include "config.h"
-#include <fstream>
-#include <filesystem>
-#include <algorithm>
-#include <cstdlib>
+#include "config.hpp"
 
-namespace fs = std::filesystem;
+#include <glib.h>
 
 Config::Config() {
-    search_engine = "https://duckduckgo.com/?q=";
-    download_dir  = std::string(getenv("HOME")) + "/Downloads";
+    reset_defaults();
 }
 
-Config& Config::get() {
-    static Config instance;
-    return instance;
+void Config::reset_defaults() {
+    search_engine_ = "https://www.google.com/search?q=";
+    const char* downloads = g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD);
+    if (downloads != nullptr) {
+        download_directory_ = downloads;
+    } else {
+        download_directory_.clear();
+    }
+    if (download_directory_.empty()) {
+        gchar* fallback = g_build_filename(g_get_home_dir(), "Downloads", nullptr);
+        download_directory_ = fallback;
+        g_free(fallback);
+    }
+    theme_ = "system";
 }
 
-std::string Config::config_path() {
-    return std::string(getenv("HOME")) + "/.config/extart/config.json";
+std::string Config::path() {
+    gchar* value = g_build_filename(g_get_user_config_dir(), "extart", "settings.ini", nullptr);
+    std::string result(value);
+    g_free(value);
+    return result;
 }
 
 void Config::load() {
-    std::ifstream f(config_path());
-    if (!f.is_open()) return;
+    reset_defaults();
 
-    std::string line, key, value;
-    while (std::getline(f, line)) {
-        auto colon = line.find(':');
-        if (colon == std::string::npos) continue;
-        key   = line.substr(0, colon);
-        value = line.substr(colon + 1);
+    GKeyFile* key_file = g_key_file_new();
+    GError* error = nullptr;
+    if (!g_key_file_load_from_file(key_file, path().c_str(), G_KEY_FILE_NONE, &error)) {
+        g_clear_error(&error);
+        g_key_file_unref(key_file);
+        return;
+    }
 
-        // Limpiar comillas y espacios
-        auto clean = [](std::string& s) {
-            s.erase(remove(s.begin(), s.end(), '"'), s.end());
-            s.erase(remove(s.begin(), s.end(), ' '), s.end());
-            s.erase(remove(s.begin(), s.end(), ','), s.end());
-        };
-        clean(key); clean(value);
+    auto read_string = [key_file](const char* key, std::string& target) {
+        GError* read_error = nullptr;
+        gchar* value = g_key_file_get_string(key_file, "General", key, &read_error);
+        if (value != nullptr && value[0] != '\0') {
+            target = value;
+        }
+        g_free(value);
+        g_clear_error(&read_error);
+    };
 
-        if (key == "search_engine") search_engine = value;
-        if (key == "download_dir")  download_dir  = value;
+    read_string("search-engine", search_engine_);
+    read_string("download-directory", download_directory_);
+    read_string("theme", theme_);
+
+    if (theme_ != "system" && theme_ != "light" && theme_ != "dark") {
+        theme_ = "system";
+    }
+
+    g_key_file_unref(key_file);
+}
+
+bool Config::save() const {
+    gchar* directory = g_build_filename(g_get_user_config_dir(), "extart", nullptr);
+    if (g_mkdir_with_parents(directory, 0700) != 0) {
+        g_free(directory);
+        return false;
+    }
+    g_free(directory);
+
+    GKeyFile* key_file = g_key_file_new();
+    g_key_file_set_string(key_file, "General", "search-engine", search_engine_.c_str());
+    g_key_file_set_string(key_file, "General", "download-directory", download_directory_.c_str());
+    g_key_file_set_string(key_file, "General", "theme", theme_.c_str());
+
+    gsize length = 0;
+    GError* error = nullptr;
+    gchar* data = g_key_file_to_data(key_file, &length, &error);
+    const bool saved = data != nullptr &&
+        g_file_set_contents(path().c_str(), data, static_cast<gssize>(length), &error);
+
+    g_free(data);
+    g_clear_error(&error);
+    g_key_file_unref(key_file);
+    return saved;
+}
+
+const std::string& Config::search_engine() const {
+    return search_engine_;
+}
+
+const std::string& Config::download_directory() const {
+    return download_directory_;
+}
+
+const std::string& Config::theme() const {
+    return theme_;
+}
+
+void Config::set_search_engine(std::string value) {
+    if (!value.empty()) {
+        search_engine_ = std::move(value);
     }
 }
 
-void Config::save() {
-    std::string path = config_path();
-    fs::create_directories(fs::path(path).parent_path());
+void Config::set_download_directory(std::string value) {
+    if (!value.empty()) {
+        download_directory_ = std::move(value);
+    }
+}
 
-    std::ofstream f(path);
-    f << "{\n";
-    f << "  \"search_engine\": \"" << search_engine << "\",\n";
-    f << "  \"download_dir\": \"" << download_dir << "\"\n";
-    f << "}\n";
+void Config::set_theme(std::string value) {
+    if (value == "system" || value == "light" || value == "dark") {
+        theme_ = std::move(value);
+    }
 }

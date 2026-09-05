@@ -1,0 +1,134 @@
+window,
+window.background,
+window.csd,
+window.solid-csd {
+    background-color: #080708;
+    color: #eee9e9;
+}
+
+window > decoration {
+    background-color: #080708;
+    border: 1px solid #35101a;
+}
+
+headerbar,
+headerbar.titlebar,
+.titlebar {
+    background-image: none;
+    background-color: #100b0d;
+    color: #eee9e9;
+    border: 0;
+    border-bottom: 1px solid #4c1825;
+    box-shadow: none;
+}
+
+headerbar:backdrop,
+headerbar.titlebar:backdrop,
+.titlebar:backdrop {
+    background-color: #0c090a;
+    color: #c6b8bb;
+}
+
+box.browser-root {
+    background-color: #080708;
+    color: #eee9e9;
+}
+
+box.browser-root > stack {
+    background-color: #080708;
+}
+
+box.tabbar {
+    background-color: #100b0d;
+    border-bottom: 1px solid #4c1825;
+    padding: 5px 6px 4px;
+}
+
+box.navbar {
+    background-color: #0c090a;
+    border-bottom: 1px solid #35101a;
+    padding: 4px 6px;
+}
+
+button,
+headerbar button,
+windowcontrols button {
+    background-image: none;
+    background-color: #171012;
+    color: #e4c9cf;
+    border: 1px solid #4c1825;
+    border-radius: 4px;
+    box-shadow: none;
+    padding: 4px 10px;
+    min-width: 0;
+}
+
+button:hover,
+headerbar button:hover,
+windowcontrols button:hover {
+    background-image: none;
+    background-color: #30131d;
+    border-color: #783043;
+    color: #fff8f9;
+}
+
+button:active,
+button:checked,
+headerbar button:active,
+windowcontrols button:active {
+    background-image: none;
+    background-color: #421824;
+    border-color: #914055;
+    color: #fff8f9;
+}
+
+button.tab-button {
+    background-color: #130d0f;
+    color: #d8c5c9;
+    border-color: #35101a;
+    border-radius: 4px 4px 0 0;
+}
+
+button.tab-button.active-tab {
+    background-color: #2a1219;
+    border-color: #713044;
+    color: #fff8f9;
+}
+
+button.tab-button:hover {
+    background-color: #251117;
+}
+
+entry,
+entry text {
+    background-image: none;
+    background-color: #100b0d;
+    color: #f1e8ea;
+    border-color: #59202e;
+}
+
+entry {
+    border: 1px solid #59202e;
+    border-radius: 4px;
+    padding: 4px 8px;
+    caret-color: #c86a7f;
+    box-shadow: none;
+}
+
+entry:focus {
+    background-color: #130d0f;
+    border-color: #914055;
+}
+
+entry placeholder {
+    color: #aa9097;
+}
+
+entry selection {
+    background-color: #5a2030;
+    color: #fff8f9;
+}
+
+label {
+    color: inherit;
+}

@@ -1,0 +1,737 @@
+[1mdiff --git a/CMakeLists.txt b/CMakeLists.txt[m
+[1mindex 875b535..8bc8d76 100644[m
+[1m--- a/CMakeLists.txt[m
+[1m+++ b/CMakeLists.txt[m
+[36m@@ -1,5 +1,5 @@[m
+ cmake_minimum_required(VERSION 3.16)[m
+[31m-project(extart VERSION 0.1 LANGUAGES CXX)[m
+[32m+[m[32mproject(extart VERSION 0.1 LANGUAGES C CXX)[m
+ [m
+ set(CMAKE_CXX_STANDARD 17)[m
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)[m
+[36m@@ -7,18 +7,38 @@[m [mset(CMAKE_CXX_STANDARD_REQUIRED ON)[m
+ find_package(PkgConfig REQUIRED)[m
+ pkg_check_modules(GTK4 REQUIRED gtk4)[m
+ pkg_check_modules(WEBKIT REQUIRED webkitgtk-6.0)[m
+[32m+[m[32mfind_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)[m
+[32m+[m
+[32m+[m[32mset(GRESOURCE_XML ${CMAKE_CURRENT_SOURCE_DIR}/resources/extart.gresource.xml)[m
+[32m+[m[32mset(GRESOURCE_C ${CMAKE_CURRENT_BINARY_DIR}/extart-resources.c)[m
+[32m+[m
+[32m+[m[32madd_custom_command([m
+[32m+[m[32m    OUTPUT ${GRESOURCE_C}[m
+[32m+[m[32m    COMMAND ${GLIB_COMPILE_RESOURCES}[m
+[32m+[m[32m        --target=${GRESOURCE_C}[m
+[32m+[m[32m        --generate-source[m
+[32m+[m[32m        --sourcedir=${CMAKE_CURRENT_SOURCE_DIR}/resources[m
+[32m+[m[32m        ${GRESOURCE_XML}[m
+[32m+[m[32m    DEPENDS ${GRESOURCE_XML}[m
+[32m+[m[32m        ${CMAKE_CURRENT_SOURCE_DIR}/resources/home.html[m
+[32m+[m[32m        ${CMAKE_CURRENT_SOURCE_DIR}/resources/style.css[m
+[32m+[m[32m    VERBATIM[m
+[32m+[m[32m)[m
+ [m
+ add_executable(extart[m
+     src/main.cpp[m
+[31m-    src/browser.cpp[m
+[32m+[m[32m    src/extart_application.cpp[m
+[32m+[m[32m    src/browser_window.cpp[m
+[32m+[m[32m    src/tab.cpp[m
+[32m+[m[32m    src/profile.cpp[m
+     src/config.cpp[m
+[31m-    src/download_manager.cpp[m
+[32m+[m[32m    ${GRESOURCE_C}[m
+ )[m
+ [m
+ target_include_directories(extart PRIVATE[m
+     ${GTK4_INCLUDE_DIRS}[m
+     ${WEBKIT_INCLUDE_DIRS}[m
+[31m-    include/[m
+[32m+[m[32m    src/[m
+ )[m
+ [m
+ target_link_libraries(extart PRIVATE[m
+[1mdiff --git a/home.html b/home.html[m
+[1mdeleted file mode 100644[m
+[1mindex bad03cb..0000000[m
+[1m--- a/home.html[m
+[1m+++ /dev/null[m
+[36m@@ -1,49 +0,0 @@[m
+[31m-<!DOCTYPE html>[m
+[31m-<html lang="es">[m
+[31m-<head>[m
+[31m-    <meta charset="UTF-8">[m
+[31m-    <meta name="viewport" content="width=device-width, initial-scale=1.0">[m
+[31m-    <title>EXTART</title>[m
+[31m-    <style>[m
+[31m-        * {[m
+[31m-            margin: 0;[m
+[31m-            padding: 0;[m
+[31m-            box-sizing: border-box;[m
+[31m-        }[m
+[31m-[m
+[31m-        body {[m
+[31m-            background-color: #0a0a0a;[m
+[31m-            color: #e0e0e0;[m
+[31m-            font-family: monospace;[m
+[31m-            height: 100vh;[m
+[31m-            display: flex;[m
+[31m-            flex-direction: column;[m
+[31m-            align-items: center;[m
+[31m-            justify-content: center;[m
+[31m-            gap: 24px;[m
+[31m-        }[m
+[31m-[m
+[31m-        .logo {[m
+[31m-            font-size: 72px;[m
+[31m-        }[m
+[31m-[m
+[31m-        .title {[m
+[31m-            font-size: 28px;[m
+[31m-            letter-spacing: 8px;[m
+[31m-            color: #8b0000;[m
+[31m-            text-transform: uppercase;[m
+[31m-        }[m
+[31m-[m
+[31m-        .subtitle {[m
+[31m-            font-size: 12px;[m
+[31m-            letter-spacing: 3px;[m
+[31m-            color: #444;[m
+[31m-        }[m
+[31m-    </style>[m
+[31m-</head>[m
+[31m-<body>[m
+[31m-    <div class="logo">🍞</div>[m
+[31m-    <div class="title">EXTART</div>[m
+[31m-    <div class="subtitle">simple. fast. yours.</div>[m
+[31m-</body>[m
+[31m-</html>[m
+\ No newline at end of file[m
+[1mdiff --git a/include/browser.h b/include/browser.h[m
+[1mdeleted file mode 100644[m
+[1mindex 0b06537..0000000[m
+[1m--- a/include/browser.h[m
+[1m+++ /dev/null[m
+[36m@@ -1,38 +0,0 @@[m
+[31m-#pragma once[m
+[31m-[m
+[31m-#include <gtk/gtk.h>[m
+[31m-#include <webkit/webkit.h>[m
+[31m-#include <string>[m
+[31m-[m
+[31m-class Browser {[m
+[31m-public:[m
+[31m-    Browser(GtkApplication* app);[m
+[31m-    static Browser* instance();[m
+[31m-[m
+[31m-private:[m
+[31m-    static Browser* _instance;[m
+[31m-    bool switching_tab = false;[m
+[31m-[m
+[31m-    GtkWidget* window;[m
+[31m-    GtkWidget* notebook;[m
+[31m-    GtkWidget* url_bar;[m
+[31m-[m
+[31m-    void build_ui(GtkApplication* app);[m
+[31m-    void load_css();[m
+[31m-[m
+[31m-    void new_tab(const std::string& url = "file:///home/arch/extart/home.html");[m
+[31m-    WebKitWebView* get_current_webview();[m
+[31m-[m
+[31m-    static void on_navigate(GtkWidget* widget, gpointer user_data);[m
+[31m-    static void on_back(GtkWidget* widget, gpointer user_data);[m
+[31m-    static void on_forward(GtkWidget* widget, gpointer user_data);[m
+[31m-    static void on_reload(GtkWidget* widget, gpointer user_data);[m
+[31m-    static void on_home(GtkWidget* widget, gpointer user_data);[m
+[31m-    static void on_new_tab(GtkWidget* widget, gpointer user_data);[m
+[31m-    static void on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer user_data);[m
+[31m-    static void on_switch_page(GtkNotebook* notebook, GtkWidget* page, guint page_num, gpointer user_data);[m
+[31m-    static void on_close_tab(GtkWidget* wv, GtkWidget* button);[m
+[31m-    static void on_settings(GtkWidget* widget, gpointer user_data);[m
+[31m-    static void on_downloads(GtkWidget* widget, gpointer user_data);[m
+[31m-    static gboolean on_decide_policy(WebKitWebView* wv, WebKitPolicyDecision* decision, WebKitPolicyDecisionType type, gpointer user_data);[m
+[31m-};[m
+\ No newline at end of file[m
+[1mdiff --git a/include/config.h b/include/config.h[m
+[1mdeleted file mode 100644[m
+[1mindex b3d747a..0000000[m
+[1m--- a/include/config.h[m
+[1m+++ /dev/null[m
+[36m@@ -1,17 +0,0 @@[m
+[31m-#pragma once[m
+[31m-#include <string>[m
+[31m-[m
+[31m-class Config {[m
+[31m-public:[m
+[31m-    static Config& get();[m
+[31m-[m
+[31m-    std::string search_engine;[m
+[31m-    std::string download_dir;[m
+[31m-[m
+[31m-    void load();[m
+[31m-    void save();[m
+[31m-[m
+[31m-private:[m
+[31m-    Config();[m
+[31m-    static std::string config_path();[m
+[31m-};[m
+\ No newline at end of file[m
+[1mdiff --git a/include/download_manager.h b/include/download_manager.h[m
+[1mdeleted file mode 100644[m
+[1mindex cd6cb02..0000000[m
+[1m--- a/include/download_manager.h[m
+[1m+++ /dev/null[m
+[36m@@ -1,39 +0,0 @@[m
+[31m-#pragma once[m
+[31m-[m
+[31m-#include <gtk/gtk.h>[m
+[31m-#include <webkit/webkit.h>[m
+[31m-#include <string>[m
+[31m-#include <vector>[m
+[31m-[m
+[31m-struct DownloadItem {[m
+[31m-    WebKitDownload* download;[m
+[31m-    GtkWidget* row;[m
+[31m-    GtkWidget* label_name;[m
+[31m-    GtkWidget* progress_bar;[m
+[31m-    GtkWidget* label_speed;[m
+[31m-    GtkWidget* label_status;[m
+[31m-    guint64 last_received;[m
+[31m-    gint64 last_time;[m
+[31m-};[m
+[31m-[m
+[31m-class DownloadManager {[m
+[31m-public:[m
+[31m-    static DownloadManager& get();[m
+[31m-[m
+[31m-    void add_download(WebKitDownload* download);[m
+[31m-    void show_panel(GtkWidget* parent_window);[m
+[31m-    void hide_panel();[m
+[31m-    bool is_visible();[m
+[31m-[m
+[31m-private:[m
+[31m-    DownloadManager();[m
+[31m-[m
+[31m-    GtkWidget* panel;[m
+[31m-    GtkWidget* list_box;[m
+[31m-    std::vector<DownloadItem*> items;[m
+[31m-[m
+[31m-    static void on_progress(WebKitDownload* dl, GParamSpec* pspec, gpointer data);[m
+[31m-    static void on_finished(WebKitDownload* dl, gpointer data);[m
+[31m-    static void on_failed(WebKitDownload* dl, GError* error, gpointer data);[m
+[31m-    static void on_cancel(GtkWidget* btn, gpointer data);[m
+[31m-};[m
+\ No newline at end of file[m
+[1mdiff --git a/src/browser.cpp b/src/browser.cpp[m
+[1mdeleted file mode 100644[m
+[1mindex 77978c1..0000000[m
+[1m--- a/src/browser.cpp[m
+[1m+++ /dev/null[m
+[36m@@ -1,385 +0,0 @@[m
+[31m-#include "browser.h"[m
+[31m-#include "config.h"[m
+[31m-#include "download_manager.h"[m
+[31m-#include <string>[m
+[31m-[m
+[31m-Browser* Browser::_instance = nullptr;[m
+[31m-[m
+[31m-// ─── Constructor ───────────────────────────────────────────────────────────[m
+[31m-Browser::Browser(GtkApplication* app) {[m
+[31m-    _instance = this;[m
+[31m-    Config::get().load();[m
+[31m-    build_ui(app);[m
+[31m-}[m
+[31m-[m
+[31m-Browser* Browser::instance() {[m
+[31m-    return _instance;[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Webview activo ────────────────────────────────────────────────────────[m
+[31m-WebKitWebView* Browser::get_current_webview() {[m
+[31m-    int page = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));[m
+[31m-    if (page < 0) return nullptr;[m
+[31m-    GtkWidget* wv = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), page);[m
+[31m-    if (!WEBKIT_IS_WEB_VIEW(wv)) return nullptr;[m
+[31m-    return WEBKIT_WEB_VIEW(wv);[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Nueva pestaña ─────────────────────────────────────────────────────────[m
+[31m-void Browser::new_tab(const std::string& url) {[m
+[31m-    WebKitWebContext* ctx = webkit_web_context_new();[m
+[31m-    GtkWidget* wv = GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,[m
+[31m-        "web-context", ctx,[m
+[31m-        nullptr));[m
+[31m-    g_object_unref(ctx);[m
+[31m-[m
+[31m-    WebKitSettings* settings = webkit_web_view_get_settings(WEBKIT_WEB_VIEW(wv));[m
+[31m-    webkit_settings_set_enable_smooth_scrolling(settings, FALSE);[m
+[31m-    webkit_settings_set_javascript_can_access_clipboard(settings, FALSE);[m
+[31m-[m
+[31m-    gtk_widget_set_vexpand(wv, TRUE);[m
+[31m-    gtk_widget_set_hexpand(wv, TRUE);[m
+[31m-[m
+[31m-    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(wv), url.c_str());[m
+[31m-    g_signal_connect(wv, "load-changed",   G_CALLBACK(on_load_changed),  NULL);[m
+[31m-    g_signal_connect(wv, "decide-policy",  G_CALLBACK(on_decide_policy), NULL);[m
+[31m-[m
+[31m-    GtkWidget* tab_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);[m
+[31m-    GtkWidget* tab_label = gtk_label_new("Nueva pestaña");[m
+[31m-    GtkWidget* tab_close = gtk_button_new_with_label("✕");[m
+[31m-    gtk_widget_add_css_class(tab_close, "tab-close");[m
+[31m-[m
+[31m-    gtk_box_append(GTK_BOX(tab_box), tab_label);[m
+[31m-    gtk_box_append(GTK_BOX(tab_box), tab_close);[m
+[31m-[m
+[31m-    int n     = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));[m
+[31m-    int index = gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), wv, tab_box, n - 1);[m
+[31m-    gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), index);[m
+[31m-[m
+[31m-    g_object_set_data(G_OBJECT(wv), "tab-label", tab_label);[m
+[31m-    g_signal_connect_swapped(tab_close, "clicked", G_CALLBACK(on_close_tab), wv);[m
+[31m-[m
+[31m-    gtk_widget_set_visible(wv, TRUE);[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Cerrar pestaña ────────────────────────────────────────────────────────[m
+[31m-void Browser::on_close_tab(GtkWidget* wv, GtkWidget* button) {[m
+[31m-    Browser* b = Browser::instance();[m
+[31m-    int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(b->notebook));[m
+[31m-[m
+[31m-    if (n <= 2) return;[m
+[31m-[m
+[31m-    int index = gtk_notebook_page_num(GTK_NOTEBOOK(b->notebook), wv);[m
+[31m-    if (index < 0) return;[m
+[31m-[m
+[31m-    int target = -1;[m
+[31m-    if (index > 0) {[m
+[31m-        GtkWidget* left = gtk_notebook_get_nth_page(GTK_NOTEBOOK(b->notebook), index - 1);[m
+[31m-        if (WEBKIT_IS_WEB_VIEW(left)) target = index - 1;[m
+[31m-    }[m
+[31m-    if (target < 0 && index < n - 1) {[m
+[31m-        GtkWidget* right = gtk_notebook_get_nth_page(GTK_NOTEBOOK(b->notebook), index + 1);[m
+[31m-        if (WEBKIT_IS_WEB_VIEW(right)) target = index + 1;[m
+[31m-    }[m
+[31m-[m
+[31m-    b->switching_tab = true;[m
+[31m-    if (target >= 0)[m
+[31m-        gtk_notebook_set_current_page(GTK_NOTEBOOK(b->notebook), target);[m
+[31m-    gtk_notebook_remove_page(GTK_NOTEBOOK(b->notebook), index);[m
+[31m-    b->switching_tab = false;[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Construir UI ──────────────────────────────────────────────────────────[m
+[31m-void Browser::build_ui(GtkApplication* app) {[m
+[31m-    window = gtk_application_window_new(app);[m
+[31m-    gtk_window_set_title(GTK_WINDOW(window), "EXTART");[m
+[31m-    gtk_window_set_default_size(GTK_WINDOW(window), 1200, 800);[m
+[31m-[m
+[31m-    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);[m
+[31m-[m
+[31m-    // Navbar[m
+[31m-    GtkWidget* navbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);[m
+[31m-    gtk_widget_set_margin_start(navbar, 6);[m
+[31m-    gtk_widget_set_margin_end(navbar, 6);[m
+[31m-    gtk_widget_set_margin_top(navbar, 6);[m
+[31m-    gtk_widget_set_margin_bottom(navbar, 6);[m
+[31m-    gtk_widget_add_css_class(navbar, "navbar");[m
+[31m-[m
+[31m-    GtkWidget* btn_back      = gtk_button_new_with_label("←");[m
+[31m-    GtkWidget* btn_forward   = gtk_button_new_with_label("→");[m
+[31m-    GtkWidget* btn_reload    = gtk_button_new_with_label("↺");[m
+[31m-    GtkWidget* btn_home      = gtk_button_new_with_label("⌂");[m
+[31m-    GtkWidget* btn_settings  = gtk_button_new_with_label("⚙");[m
+[31m-    GtkWidget* btn_downloads = gtk_button_new_with_label("↓");[m
+[31m-[m
+[31m-    url_bar = gtk_entry_new();[m
+[31m-    gtk_editable_set_text(GTK_EDITABLE(url_bar), "");[m
+[31m-    gtk_widget_set_hexpand(url_bar, TRUE);[m
+[31m-[m
+[31m-    g_signal_connect(url_bar,       "activate", G_CALLBACK(on_navigate),  NULL);[m
+[31m-    g_signal_connect(btn_back,      "clicked",  G_CALLBACK(on_back),      NULL);[m
+[31m-    g_signal_connect(btn_forward,   "clicked",  G_CALLBACK(on_forward),   NULL);[m
+[31m-    g_signal_connect(btn_reload,    "clicked",  G_CALLBACK(on_reload),    NULL);[m
+[31m-    g_signal_connect(btn_home,      "clicked",  G_CALLBACK(on_home),      NULL);[m
+[31m-    g_signal_connect(btn_settings,  "clicked",  G_CALLBACK(on_settings),  NULL);[m
+[31m-    g_signal_connect(btn_downloads, "clicked",  G_CALLBACK(on_downloads), NULL);[m
+[31m-[m
+[31m-    gtk_box_append(GTK_BOX(navbar), btn_back);[m
+[31m-    gtk_box_append(GTK_BOX(navbar), btn_forward);[m
+[31m-    gtk_box_append(GTK_BOX(navbar), btn_reload);[m
+[31m-    gtk_box_append(GTK_BOX(navbar), btn_home);[m
+[31m-    gtk_box_append(GTK_BOX(navbar), url_bar);[m
+[31m-    gtk_box_append(GTK_BOX(navbar), btn_settings);[m
+[31m-    gtk_box_append(GTK_BOX(navbar), btn_downloads);[m
+[31m-[m
+[31m-    // Notebook (pestañas)[m
+[31m-    notebook = gtk_notebook_new();[m
+[31m-    gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);[m
+[31m-    gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);[m
+[31m-    gtk_widget_set_vexpand(notebook, TRUE);[m
+[31m-    gtk_widget_set_hexpand(notebook, TRUE);[m
+[31m-[m
+[31m-    g_signal_connect(notebook, "switch-page", G_CALLBACK(on_switch_page), NULL);[m
+[31m-[m
+[31m-    gtk_box_append(GTK_BOX(vbox), navbar);[m
+[31m-    gtk_box_append(GTK_BOX(vbox), notebook);[m
+[31m-[m
+[31m-    gtk_window_set_child(GTK_WINDOW(window), vbox);[m
+[31m-[m
+[31m-    load_css();[m
+[31m-[m
+[31m-    // Botón + como pestaña placeholder[m
+[31m-    GtkWidget* placeholder = gtk_label_new("");[m
+[31m-    GtkWidget* plus_btn    = gtk_button_new_with_label("+");[m
+[31m-    gtk_widget_add_css_class(plus_btn, "newtab-btn");[m
+[31m-    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), placeholder, plus_btn);[m
+[31m-    gtk_widget_set_visible(placeholder, TRUE);[m
+[31m-    g_signal_connect(plus_btn, "clicked", G_CALLBACK(on_new_tab), NULL);[m
+[31m-[m
+[31m-    // Inicializar panel de descargas oculto[m
+[31m-    DownloadManager::get().show_panel(window);[m
+[31m-    DownloadManager::get().hide_panel();[m
+[31m-[m
+[31m-    // Primera pestaña[m
+[31m-    new_tab();[m
+[31m-[m
+[31m-    gtk_window_present(GTK_WINDOW(window));[m
+[31m-}[m
+[31m-[m
+[31m-// ─── CSS ───────────────────────────────────────────────────────────────────[m
+[31m-void Browser::load_css() {[m
+[31m-    GtkCssProvider* css = gtk_css_provider_new();[m
+[31m-    gtk_css_provider_load_from_path(css, "../style.css");[m
+[31m-    gtk_style_context_add_provider_for_display([m
+[31m-        gdk_display_get_default(),[m
+[31m-        GTK_STYLE_PROVIDER(css),[m
+[31m-        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION[m
+[31m-    );[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Navegación ────────────────────────────────────────────────────────────[m
+[31m-void Browser::on_navigate(GtkWidget* widget, gpointer user_data) {[m
+[31m-    Browser* b = Browser::instance();[m
+[31m-    WebKitWebView* wv = b->get_current_webview();[m
+[31m-    if (!wv) return;[m
+[31m-[m
+[31m-    const char* url = gtk_editable_get_text(GTK_EDITABLE(b->url_bar));[m
+[31m-    std::string uri(url);[m
+[31m-[m
+[31m-    if (uri.find("http://") == 0 || uri.find("https://") == 0 || uri.find("file://") == 0) {[m
+[31m-        // URL completa, navegar directo[m
+[31m-    } else if (uri.find(".") != std::string::npos && uri.find(" ") == std::string::npos) {[m
+[31m-        uri = "https://" + uri;[m
+[31m-    } else {[m
+[31m-        std::string encoded;[m
+[31m-        for (char c : uri) {[m
+[31m-            if (c == ' ') encoded += "+";[m
+[31m-            else encoded += c;[m
+[31m-        }[m
+[31m-        uri = Config::get().search_engine + encoded;[m
+[31m-    }[m
+[31m-[m
+[31m-    webkit_web_view_load_uri(wv, uri.c_str());[m
+[31m-}[m
+[31m-[m
+[31m-void Browser::on_back(GtkWidget* widget, gpointer user_data) {[m
+[31m-    WebKitWebView* wv = Browser::instance()->get_current_webview();[m
+[31m-    if (wv) webkit_web_view_go_back(wv);[m
+[31m-}[m
+[31m-[m
+[31m-void Browser::on_forward(GtkWidget* widget, gpointer user_data) {[m
+[31m-    WebKitWebView* wv = Browser::instance()->get_current_webview();[m
+[31m-    if (wv) webkit_web_view_go_forward(wv);[m
+[31m-}[m
+[31m-[m
+[31m-void Browser::on_reload(GtkWidget* widget, gpointer user_data) {[m
+[31m-    WebKitWebView* wv = Browser::instance()->get_current_webview();[m
+[31m-    if (wv) webkit_web_view_reload(wv);[m
+[31m-}[m
+[31m-[m
+[31m-void Browser::on_home(GtkWidget* widget, gpointer user_data) {[m
+[31m-    WebKitWebView* wv = Browser::instance()->get_current_webview();[m
+[31m-    if (wv) webkit_web_view_load_uri(wv, "file:///home/arch/extart/home.html");[m
+[31m-}[m
+[31m-[m
+[31m-void Browser::on_new_tab(GtkWidget* widget, gpointer user_data) {[m
+[31m-    Browser::instance()->new_tab();[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Carga de página ───────────────────────────────────────────────────────[m
+[31m-void Browser::on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer user_data) {[m
+[31m-    Browser* b = Browser::instance();[m
+[31m-    if (!b) return;[m
+[31m-[m
+[31m-    WebKitWebView* active = b->get_current_webview();[m
+[31m-    if (wv != active) return;[m
+[31m-[m
+[31m-    if (event == WEBKIT_LOAD_COMMITTED) {[m
+[31m-        const char* uri = webkit_web_view_get_uri(wv);[m
+[31m-        if (uri) gtk_editable_set_text(GTK_EDITABLE(b->url_bar), uri);[m
+[31m-    }[m
+[31m-[m
+[31m-    if (event == WEBKIT_LOAD_FINISHED) {[m
+[31m-        const char* title = webkit_web_view_get_title(wv);[m
+[31m-        GtkWidget* label = GTK_WIDGET(g_object_get_data(G_OBJECT(wv), "tab-label"));[m
+[31m-        if (label && title) gtk_label_set_text(GTK_LABEL(label), title);[m
+[31m-    }[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Cambio de pestaña ─────────────────────────────────────────────────────[m
+[31m-void Browser::on_switch_page(GtkNotebook* nb, GtkWidget* page, guint page_num, gpointer user_data) {[m
+[31m-    Browser* b = Browser::instance();[m
+[31m-[m
+[31m-    if (b->switching_tab) return;[m
+[31m-[m
+[31m-    if (!WEBKIT_IS_WEB_VIEW(page)) {[m
+[31m-        int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(nb));[m
+[31m-        for (int i = n - 1; i >= 0; i--) {[m
+[31m-            GtkWidget* p = gtk_notebook_get_nth_page(GTK_NOTEBOOK(nb), i);[m
+[31m-            if (WEBKIT_IS_WEB_VIEW(p)) {[m
+[31m-                b->switching_tab = true;[m
+[31m-                gtk_notebook_set_current_page(GTK_NOTEBOOK(nb), i);[m
+[31m-                b->switching_tab = false;[m
+[31m-                break;[m
+[31m-            }[m
+[31m-        }[m
+[31m-        return;[m
+[31m-    }[m
+[31m-[m
+[31m-    WebKitWebView* wv = WEBKIT_WEB_VIEW(page);[m
+[31m-    const char* uri = webkit_web_view_get_uri(wv);[m
+[31m-    if (uri) gtk_editable_set_text(GTK_EDITABLE(b->url_bar), uri);[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Configuración ─────────────────────────────────────────────────────────[m
+[31m-// viva el yuri[m
+[31m-struct SettingsData {[m
+[31m-    GtkWidget* dropdown;[m
+[31m-    GtkWidget* entry_dl;[m
+[31m-    GtkWidget* dialog;[m
+[31m-};[m
+[31m-[m
+[31m-static void save_settings(GtkWidget* btn, gpointer data) {[m
+[31m-    SettingsData* sd = (SettingsData*)data;[m
+[31m-    Config& cfg = Config::get();[m
+[31m-[m
+[31m-    guint selected = gtk_drop_down_get_selected(GTK_DROP_DOWN(sd->dropdown));[m
+[31m-    if (selected == 0) cfg.search_engine = "https://duckduckgo.com/?q=";[m
+[31m-    else if (selected == 1) cfg.search_engine = "https://www.google.com/search?q=";[m
+[31m-    else cfg.search_engine = "https://www.bing.com/search?q=";[m
+[31m-[m
+[31m-    cfg.download_dir = gtk_editable_get_text(GTK_EDITABLE(sd->entry_dl));[m
+[31m-    cfg.save();[m
+[31m-[m
+[31m-    gtk_window_destroy(GTK_WINDOW(sd->dialog));[m
+[31m-    delete sd;[m
+[31m-}[m
+[31m-[m
+[31m-void Browser::on_settings(GtkWidget* widget, gpointer user_data) {[m
+[31m-    Browser* b = Browser::instance();[m
+[31m-[m
+[31m-    GtkWidget* dialog = gtk_window_new();[m
+[31m-    gtk_window_set_title(GTK_WINDOW(dialog), "Configuración — EXTART");[m
+[31m-    gtk_window_set_default_size(GTK_WINDOW(dialog), 400, 250);[m
+[31m-    gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(b->window));[m
+[31m-    gtk_window_set_modal(GTK_WINDOW(dialog), TRUE);[m
+[31m-[m
+[31m-    GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);[m
+[31m-    gtk_widget_set_margin_start(vbox, 20);[m
+[31m-    gtk_widget_set_margin_end(vbox, 20);[m
+[31m-    gtk_widget_set_margin_top(vbox, 20);[m
+[31m-    gtk_widget_set_margin_bottom(vbox, 20);[m
+[31m-[m
+[31m-    GtkWidget* lbl_engine = gtk_label_new("Buscador por defecto:");[m
+[31m-    gtk_widget_set_halign(lbl_engine, GTK_ALIGN_START);[m
+[31m-[m
+[31m-    GtkWidget* dropdown = gtk_drop_down_new_from_strings([m
+[31m-        (const char*[]){"DuckDuckGo", "Google", "Bing", NULL}[m
+[31m-    );[m
+[31m-[m
+[31m-    Config& cfg = Config::get();[m
+[31m-    if (cfg.search_engine.find("google") != std::string::npos)[m
+[31m-        gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 1);[m
+[31m-    else if (cfg.search_engine.find("bing") != std::string::npos)[m
+[31m-        gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 2);[m
+[31m-    else[m
+[31m-        gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 0);[m
+[31m-[m
+[31m-    GtkWidget* lbl_dl  = gtk_label_new("Carpeta de descargas:");[m
+[31m-    gtk_widget_set_halign(lbl_dl, GTK_ALIGN_START);[m
+[31m-[m
+[31m-    GtkWidget* entry_dl = gtk_entry_new();[m
+[31m-    gtk_editable_set_text(GTK_EDITABLE(entry_dl), cfg.download_dir.c_str());[m
+[31m-[m
+[31m-    GtkWidget* btn_save = gtk_button_new_with_label("Guardar");[m
+[31m-[m
+[31m-    gtk_box_append(GTK_BOX(vbox), lbl_engine);[m
+[31m-    gtk_box_append(GTK_BOX(vbox), dropdown);[m
+[31m-    gtk_box_append(GTK_BOX(vbox), lbl_dl);[m
+[31m-    gtk_box_append(GTK_BOX(vbox), entry_dl);[m
+[31m-    gtk_box_append(GTK_BOX(vbox), btn_save);[m
+[31m-[m
+[31m-    gtk_window_set_child(GTK_WINDOW(dialog), vbox);[m
+[31m-[m
+[31m-    SettingsData* sd = new SettingsData{dropdown, entry_dl, dialog};[m
+[31m-    g_signal_connect(btn_save, "clicked", G_CALLBACK(save_settings), sd);[m
+[31m-[m
+[31m-    gtk_window_present(GTK_WINDOW(dialog));[m
+[31m-}[m
+[31m-[m
+[31m-// ─── Descargas ─────────────────────────────────────────────────────────────[m
+[31m-gboolean Browser::on_decide_policy(WebKitWebView* wv, WebKitPolicyDecision* decision, WebKitPolicyDecisionType type, gpointer user_data) {[m
+[31m-    if (type == WEBKIT_POLICY_DECISION_TYPE_RESPONSE) {[m
+[31m-        WebKitResponsePolicyDecision* response = WEBKIT_RESPONSE_POLICY_DECISION(decision);[m
+[31m-        if (!webkit_response_policy_decision_is_mime_type_supported(response)) {[m
+[31m-            WebKitURIRequest* request = webkit_response_policy_decision_get_request(response);[m
+[31m-            const char* uri = webkit_uri_request_get_uri(request);[m
+[31m-[m
+[31m-            std::string url(uri);[m
+[31m-            std::string filename = url.substr(url.find_last_of("/") + 1);[m
+[31m-            if (filename.empty() || filename.find("?") != std::string::npos)[m
+[31m-                filename = "descarga";[m
+[31m-[m
+[31m-            std::string dest = "file://" + Config::get().download_dir + "/" + filename;[m
+[31m-[m
+[31m-            g_print("descarga detectada: %s\n", uri);[m
+[31m-[m
+[31m-            WebKitDownload* download = webkit_web_view_download_uri(wv, uri);[m
+[31m-            webkit_download_set_destination(download, dest.c_str());[m
+[31m-            DownloadManager::get().add_download(download);[m
+[31m-[m
+[31m-            webkit_policy_decision_ignore(decision);[m
+[31m-            return TRUE;[m
+[31m-        }[m
+[31m-    }[m
+[31m-    return FALSE;[m
+[31m-}[m
+[31m-[m
+[31m-void Browser::on_downloads(GtkWidget* widget, gpointer user_data) {[m
+[31m-    Browser* b = Browser::instance();[m
+[31m-    DownloadManager& dm = DownloadManager::get();[m
+[31m-    if (dm.is_visible())[m
+[31m-        dm.hide_panel();[m
+[31m-    else[m
+[31m-        dm.show_panel(b->window);[m
+[31m-}[m
+\ No newline at end of file[m
+[1mdiff --git a/src/config.cpp b/src/config.cpp[m
+[1mindex b2ab80e..7627b4b 100644[m
+[1m--- a/src/config.cpp[m
+[1m+++ b/src/config.cpp[m
+[36m@@ -1,56 +1,117 @@[m
+[31m-#include "config.h"[m
+[31m-#include <fstream>[m
+[31m-#include <filesystem>[m
+[31m-#include <algorithm>[m
+[31m-#include <cstdlib>[m
+[32m+[m[32m#include "config.hpp"[m
+ [m
+[31m-namespace fs = std::filesystem;[m
+[32m+[m[32m#include <glib.h>[m
+ [m
+ Config::Config() {[m
+[31m-    search_engine = "https://duckduckgo.com/?q=";[m
+[31m-    download_dir  = std::string(getenv("HOME")) + "/Downloads";[m
+[32m+[m[32m    reset_defaults();[m
+ }[m
+ [m
+[31m-Config& Config::get() {[m
+[31m-    static Config instance;[m
+[31m-    return instance;[m
+[32m+[m[32mvoid Config::reset_defaults() {[m
+[32m+[m[32m    search_engine_ = "https://www.google.com/search?q=";[m
+[32m+[m[32m    const char* downloads = g_get_user_special_dir(G_USER_DIRECTORY_DOWNLOAD);[m
+[32m+[m[32m    if (downloads != nullptr) {[m
+[32m+[m[32m        download_directory_ = downloads;[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m        download_directory_.clear();[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (download_directory_.empty()) {[m
+[32m+[m[32m        gchar* fallback = g_build_filename(g_get_home_dir(), "Downloads", nullptr);[m
+[32m+[m[32m        download_directory_ = fallback;[m
+[32m+[m[32m        g_free(fallback);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    theme_ = "system";[m
+ }[m
+ [m
+[31m-std::string Config::config_path() {[m
+[31m-    return std::string(getenv("HOME")) + "/.config/extart/config.json";[m
+[32m+[m[32mstd::string Config::path() {[m
+[32m+[m[32m    gchar* value = g_build_filename(g_get_user_config_dir(), "extart", "settings.ini", nullptr);[m
+[32m+[m[32m    std::string result(value);[m
+[32m+[m[32m    g_free(value);[m
+[32m+[m[32m    return result;[m
+ }[m
+ [m
+ void Config::load() {[m
+[31m-    std::ifstream f(config_path());[m
+[31m-    if (!f.is_open()) return;[m
+[31m-[m
+[31m-    std::string line, key, value;[m
+[31m-    while (std::getline(f, line)) {[m
+[31m-        auto colon = line.find(':');[m
+[31m-        if (colon == std::string::npos) continue;[m
+[31m-        key   = line.substr(0, colon);[m
+[31m-        value = line.substr(colon + 1);[m
+[31m-[m
+[31m-        // Limpiar comillas y espacios[m
+[31m-        auto clean = [](std::string& s) {[m
+[31m-            s.erase(remove(s.begin(), s.end(), '"'), s.end());[m
+[31m-            s.erase(remove(s.begin(), s.end(), ' '), s.end());[m
+[31m-            s.erase(remove(s.begin(), s.end(), ','), s.end());[m
+[31m-        };[m
+[31m-        clean(key); clean(value);[m
+[31m-[m
+[31m-        if (key == "search_engine") search_engine = value;[m
+[31m-        if (key == "download_dir")  download_dir  = value;[m
+[31m-    }[m
+[31m-}[m
+[31m-[m
+[31m-void Config::save() {[m
+[31m-    std::string path = config_path();[m
+[31m-    fs::create_directories(fs::path(path).parent_path());[m
+[31m-[m
+[31m-    std::ofstream f(path);[m
+[31m-    f << "{\n";[m
+[31m-    f << "  \"search_engine\": \"" << search_engine << "\",\n";[m
+[31m-    f << "  \"download_dir\": \"" << download_dir << "\"\n";[m
+[31m-    f << "}\n";[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m    reset_defaults();[m
+[32m+[m
+[32m+[m[32m    GKeyFile* key_file = g_key_file_new();[m
+[32m+[m[32m    GError* error = nullptr;[m
+[32m+[m[32m    if (!g_key_file_load_from_file(key_file, path().c_str(), G_KEY_FILE_NONE, &error)) {[m
+[32m+[m[32m        g_clear_error(&error);[m
+[32m+[m[32m        g_key_file_unref(key_file);[m
+[32m+[m[32m        return;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    auto read_string = [key_file](const char* key, std::string& target) {[m
+[32m+[m[32m        GError* read_error = nullptr;[m
+[32m+[m[32m        gchar* value = g_key_file_get_string(key_file, "General", key, &read_error);[m
+[32m+[m[32m        if (value != nullptr && value[0] != '\0') {[m
+[32m+[m[32m            target = value;[m
+[32m+[m[32m        }[m
+[32m+[m[32m        g_free(value);[m
+[32m+[m[32m        g_clear_error(&read_error);[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    read_string("search-engine", search_engine_);[m
+[32m+[m[32m    read_string("download-directory", download_directory_);[m
+[32m+[m[32m    read_string("theme", theme_);[m
+[32m+[m
+[32m+[m[32m    if (theme_ != "system" && theme_ != "light" && theme_ != "dark") {[m
+[32m+[m[32m        theme_ = "system";[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    g_key_file_unref(key_file);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mbool Config::save() const {[m
+[32m+[m[32m    gchar* directory = g_build_filename(g_get_user_config_dir(), "extart", nullptr);[m
+[32m+[m[32m    if (g_mkdir_with_parents(directory, 0700) != 0) {[m
+[32m+[m[32m        g_free(directory);[m
+[32m+[m[32m        return false;[m
+[32m
