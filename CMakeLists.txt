@@ -12,6 +12,7 @@ add_executable(extart
     src/main.cpp
     src/browser.cpp
     src/config.cpp
+    src/download_manager.cpp
 )
 
 target_include_directories(extart PRIVATE

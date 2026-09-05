@@ -1,9 +1,11 @@
 #include "browser.h"
 #include "config.h"
+#include "download_manager.h"
 #include <string>
 
 Browser* Browser::_instance = nullptr;
 
+// ─── Constructor ───────────────────────────────────────────────────────────
 Browser::Browser(GtkApplication* app) {
     _instance = this;
     Config::get().load();
@@ -14,6 +16,7 @@ Browser* Browser::instance() {
     return _instance;
 }
 
+// ─── Webview activo ────────────────────────────────────────────────────────
 WebKitWebView* Browser::get_current_webview() {
     int page = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
     if (page < 0) return nullptr;
@@ -21,6 +24,8 @@ WebKitWebView* Browser::get_current_webview() {
     if (!WEBKIT_IS_WEB_VIEW(wv)) return nullptr;
     return WEBKIT_WEB_VIEW(wv);
 }
+
+// ─── Nueva pestaña ─────────────────────────────────────────────────────────
 void Browser::new_tab(const std::string& url) {
     WebKitWebContext* ctx = webkit_web_context_new();
     GtkWidget* wv = GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,
@@ -36,8 +41,8 @@ void Browser::new_tab(const std::string& url) {
     gtk_widget_set_hexpand(wv, TRUE);
 
     webkit_web_view_load_uri(WEBKIT_WEB_VIEW(wv), url.c_str());
-    g_signal_connect(wv, "load-changed", G_CALLBACK(on_load_changed), NULL);
-    g_signal_connect(wv, "decide-policy", G_CALLBACK(on_decide_policy), NULL);
+    g_signal_connect(wv, "load-changed",   G_CALLBACK(on_load_changed),  NULL);
+    g_signal_connect(wv, "decide-policy",  G_CALLBACK(on_decide_policy), NULL);
 
     GtkWidget* tab_box   = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
     GtkWidget* tab_label = gtk_label_new("Nueva pestaña");
@@ -47,7 +52,7 @@ void Browser::new_tab(const std::string& url) {
     gtk_box_append(GTK_BOX(tab_box), tab_label);
     gtk_box_append(GTK_BOX(tab_box), tab_close);
 
-    int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+    int n     = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
     int index = gtk_notebook_insert_page(GTK_NOTEBOOK(notebook), wv, tab_box, n - 1);
     gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), index);
 
@@ -57,6 +62,7 @@ void Browser::new_tab(const std::string& url) {
     gtk_widget_set_visible(wv, TRUE);
 }
 
+// ─── Cerrar pestaña ────────────────────────────────────────────────────────
 void Browser::on_close_tab(GtkWidget* wv, GtkWidget* button) {
     Browser* b = Browser::instance();
     int n = gtk_notebook_get_n_pages(GTK_NOTEBOOK(b->notebook));
@@ -83,6 +89,7 @@ void Browser::on_close_tab(GtkWidget* wv, GtkWidget* button) {
     b->switching_tab = false;
 }
 
+// ─── Construir UI ──────────────────────────────────────────────────────────
 void Browser::build_ui(GtkApplication* app) {
     window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "EXTART");
@@ -90,6 +97,7 @@ void Browser::build_ui(GtkApplication* app) {
 
     GtkWidget* vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
 
+    // Navbar
     GtkWidget* navbar = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 4);
     gtk_widget_set_margin_start(navbar, 6);
     gtk_widget_set_margin_end(navbar, 6);
@@ -97,30 +105,34 @@ void Browser::build_ui(GtkApplication* app) {
     gtk_widget_set_margin_bottom(navbar, 6);
     gtk_widget_add_css_class(navbar, "navbar");
 
-    GtkWidget* btn_back    = gtk_button_new_with_label("←");
-    GtkWidget* btn_forward = gtk_button_new_with_label("→");
-    GtkWidget* btn_reload  = gtk_button_new_with_label("↺");
-    GtkWidget* btn_home    = gtk_button_new_with_label("⌂");
+    GtkWidget* btn_back      = gtk_button_new_with_label("←");
+    GtkWidget* btn_forward   = gtk_button_new_with_label("→");
+    GtkWidget* btn_reload    = gtk_button_new_with_label("↺");
+    GtkWidget* btn_home      = gtk_button_new_with_label("⌂");
+    GtkWidget* btn_settings  = gtk_button_new_with_label("⚙");
+    GtkWidget* btn_downloads = gtk_button_new_with_label("↓");
 
     url_bar = gtk_entry_new();
     gtk_editable_set_text(GTK_EDITABLE(url_bar), "");
     gtk_widget_set_hexpand(url_bar, TRUE);
 
-    g_signal_connect(url_bar,     "activate", G_CALLBACK(on_navigate), NULL);
-    g_signal_connect(btn_back,    "clicked",  G_CALLBACK(on_back),     NULL);
-    g_signal_connect(btn_forward, "clicked",  G_CALLBACK(on_forward),  NULL);
-    g_signal_connect(btn_reload,  "clicked",  G_CALLBACK(on_reload),   NULL);
-    g_signal_connect(btn_home,    "clicked",  G_CALLBACK(on_home),     NULL);
+    g_signal_connect(url_bar,       "activate", G_CALLBACK(on_navigate),  NULL);
+    g_signal_connect(btn_back,      "clicked",  G_CALLBACK(on_back),      NULL);
+    g_signal_connect(btn_forward,   "clicked",  G_CALLBACK(on_forward),   NULL);
+    g_signal_connect(btn_reload,    "clicked",  G_CALLBACK(on_reload),    NULL);
+    g_signal_connect(btn_home,      "clicked",  G_CALLBACK(on_home),      NULL);
+    g_signal_connect(btn_settings,  "clicked",  G_CALLBACK(on_settings),  NULL);
+    g_signal_connect(btn_downloads, "clicked",  G_CALLBACK(on_downloads), NULL);
 
     gtk_box_append(GTK_BOX(navbar), btn_back);
     gtk_box_append(GTK_BOX(navbar), btn_forward);
     gtk_box_append(GTK_BOX(navbar), btn_reload);
     gtk_box_append(GTK_BOX(navbar), btn_home);
     gtk_box_append(GTK_BOX(navbar), url_bar);
-    GtkWidget* btn_settings = gtk_button_new_with_label("⚙");
-    g_signal_connect(btn_settings, "clicked", G_CALLBACK(on_settings), NULL);
     gtk_box_append(GTK_BOX(navbar), btn_settings);
+    gtk_box_append(GTK_BOX(navbar), btn_downloads);
 
+    // Notebook (pestañas)
     notebook = gtk_notebook_new();
     gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
     gtk_notebook_set_show_border(GTK_NOTEBOOK(notebook), FALSE);
@@ -136,18 +148,25 @@ void Browser::build_ui(GtkApplication* app) {
 
     load_css();
 
+    // Botón + como pestaña placeholder
     GtkWidget* placeholder = gtk_label_new("");
-    GtkWidget* plus_btn = gtk_button_new_with_label("+");
+    GtkWidget* plus_btn    = gtk_button_new_with_label("+");
     gtk_widget_add_css_class(plus_btn, "newtab-btn");
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), placeholder, plus_btn);
     gtk_widget_set_visible(placeholder, TRUE);
     g_signal_connect(plus_btn, "clicked", G_CALLBACK(on_new_tab), NULL);
 
+    // Inicializar panel de descargas oculto
+    DownloadManager::get().show_panel(window);
+    DownloadManager::get().hide_panel();
+
+    // Primera pestaña
     new_tab();
 
     gtk_window_present(GTK_WINDOW(window));
 }
 
+// ─── CSS ───────────────────────────────────────────────────────────────────
 void Browser::load_css() {
     GtkCssProvider* css = gtk_css_provider_new();
     gtk_css_provider_load_from_path(css, "../style.css");
@@ -158,6 +177,7 @@ void Browser::load_css() {
     );
 }
 
+// ─── Navegación ────────────────────────────────────────────────────────────
 void Browser::on_navigate(GtkWidget* widget, gpointer user_data) {
     Browser* b = Browser::instance();
     WebKitWebView* wv = b->get_current_webview();
@@ -165,11 +185,9 @@ void Browser::on_navigate(GtkWidget* widget, gpointer user_data) {
 
     const char* url = gtk_editable_get_text(GTK_EDITABLE(b->url_bar));
     std::string uri(url);
-    g_print("navegando a: %s\n", uri.c_str());
-    g_print("buscador: %s\n", Config::get().search_engine.c_str());
 
     if (uri.find("http://") == 0 || uri.find("https://") == 0 || uri.find("file://") == 0) {
-        // URL completa
+        // URL completa, navegar directo
     } else if (uri.find(".") != std::string::npos && uri.find(" ") == std::string::npos) {
         uri = "https://" + uri;
     } else {
@@ -183,6 +201,7 @@ void Browser::on_navigate(GtkWidget* widget, gpointer user_data) {
 
     webkit_web_view_load_uri(wv, uri.c_str());
 }
+
 void Browser::on_back(GtkWidget* widget, gpointer user_data) {
     WebKitWebView* wv = Browser::instance()->get_current_webview();
     if (wv) webkit_web_view_go_back(wv);
@@ -207,6 +226,7 @@ void Browser::on_new_tab(GtkWidget* widget, gpointer user_data) {
     Browser::instance()->new_tab();
 }
 
+// ─── Carga de página ───────────────────────────────────────────────────────
 void Browser::on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer user_data) {
     Browser* b = Browser::instance();
     if (!b) return;
@@ -226,6 +246,7 @@ void Browser::on_load_changed(WebKitWebView* wv, WebKitLoadEvent event, gpointer
     }
 }
 
+// ─── Cambio de pestaña ─────────────────────────────────────────────────────
 void Browser::on_switch_page(GtkNotebook* nb, GtkWidget* page, guint page_num, gpointer user_data) {
     Browser* b = Browser::instance();
 
@@ -249,6 +270,8 @@ void Browser::on_switch_page(GtkNotebook* nb, GtkWidget* page, guint page_num, g
     const char* uri = webkit_web_view_get_uri(wv);
     if (uri) gtk_editable_set_text(GTK_EDITABLE(b->url_bar), uri);
 }
+
+// ─── Configuración ─────────────────────────────────────────────────────────
 // viva el yuri
 struct SettingsData {
     GtkWidget* dropdown;
@@ -302,7 +325,7 @@ void Browser::on_settings(GtkWidget* widget, gpointer user_data) {
     else
         gtk_drop_down_set_selected(GTK_DROP_DOWN(dropdown), 0);
 
-    GtkWidget* lbl_dl = gtk_label_new("Carpeta de descargas:");
+    GtkWidget* lbl_dl  = gtk_label_new("Carpeta de descargas:");
     gtk_widget_set_halign(lbl_dl, GTK_ALIGN_START);
 
     GtkWidget* entry_dl = gtk_entry_new();
@@ -323,6 +346,8 @@ void Browser::on_settings(GtkWidget* widget, gpointer user_data) {
 
     gtk_window_present(GTK_WINDOW(dialog));
 }
+
+// ─── Descargas ─────────────────────────────────────────────────────────────
 gboolean Browser::on_decide_policy(WebKitWebView* wv, WebKitPolicyDecision* decision, WebKitPolicyDecisionType type, gpointer user_data) {
     if (type == WEBKIT_POLICY_DECISION_TYPE_RESPONSE) {
         WebKitResponsePolicyDecision* response = WEBKIT_RESPONSE_POLICY_DECISION(decision);
@@ -332,16 +357,29 @@ gboolean Browser::on_decide_policy(WebKitWebView* wv, WebKitPolicyDecision* deci
 
             std::string url(uri);
             std::string filename = url.substr(url.find_last_of("/") + 1);
-            if (filename.empty()) filename = "descarga";
+            if (filename.empty() || filename.find("?") != std::string::npos)
+                filename = "descarga";
 
             std::string dest = "file://" + Config::get().download_dir + "/" + filename;
 
+            g_print("descarga detectada: %s\n", uri);
+
             WebKitDownload* download = webkit_web_view_download_uri(wv, uri);
             webkit_download_set_destination(download, dest.c_str());
+            DownloadManager::get().add_download(download);
 
             webkit_policy_decision_ignore(decision);
             return TRUE;
         }
     }
     return FALSE;
+}
+
+void Browser::on_downloads(GtkWidget* widget, gpointer user_data) {
+    Browser* b = Browser::instance();
+    DownloadManager& dm = DownloadManager::get();
+    if (dm.is_visible())
+        dm.hide_panel();
+    else
+        dm.show_panel(b->window);
 }
