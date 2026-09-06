@@ -7,7 +7,7 @@
 
 #include <string>
 
-Tab::Tab(BrowserWindow& window, Profile& profile, Config& config)
+Tab::Tab(BrowserWindow& window, Profile& profile)
 : window_(window) {
     web_view_ = GTK_WIDGET(g_object_new(
         WEBKIT_TYPE_WEB_VIEW,
@@ -18,6 +18,7 @@ Tab::Tab(BrowserWindow& window, Profile& profile, Config& config)
     gtk_widget_set_hexpand(web_view_, TRUE);
     gtk_widget_set_vexpand(web_view_, TRUE);
 
+    const Config& config = window_.config();
     WebKitSettings* settings = webkit_web_view_get_settings(view());
     if (settings != nullptr) {
         webkit_settings_set_enable_javascript(settings, config.javascript_enabled());
@@ -37,7 +38,6 @@ Tab::Tab(BrowserWindow& window, Profile& profile, Config& config)
         this
     );
 
-    // Conectar este WebView al gestor global de descargas.
     if (window_.download_manager() != nullptr) {
         window_.download_manager()->setup_for_web_view(view());
     }
