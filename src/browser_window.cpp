@@ -1,15 +1,15 @@
 #include "browser_window.hpp"
 
+#include "bookmarks.hpp"
+#include "bookmarks_panel.hpp"
 #include "config.hpp"
 #include "download_manager.hpp"
+#include "downloads_panel.hpp"
 #include "extart_application.hpp"
+#include "history.hpp"
+#include "history_panel.hpp"
 #include "profile.hpp"
 #include "tab.hpp"
-#include "history.hpp"
-#include "bookmarks.hpp"
-#include "history_panel.hpp"
-#include "bookmarks_panel.hpp"
-#include "downloads_panel.hpp"
 
 #include <glib.h>
 
@@ -27,9 +27,9 @@ return true;
 }
 }
 
-```
+
 return false;
-```
+
 
 }
 
@@ -38,8 +38,9 @@ if (text.empty() || has_whitespace(text)) {
 return false;
 }
 
-```
-gchar* scheme = g_uri_parse_scheme(text.c_str());
+
+gchar* scheme =
+    g_uri_parse_scheme(text.c_str());
 
 if (scheme != nullptr) {
     g_free(scheme);
@@ -50,7 +51,28 @@ return text == "localhost" ||
        text.rfind("localhost:", 0) == 0 ||
        text.find('.') != std::string::npos ||
        text.find(':') != std::string::npos;
-```
+
+
+}
+
+bool is_history_uri(const char* uri) {
+if (uri == nullptr || *uri == '\0') {
+return false;
+}
+
+
+const std::string value(uri);
+
+if (value == "about:blank") {
+    return false;
+}
+
+if (value.rfind("extart://", 0) == 0) {
+    return false;
+}
+
+return true;
+
 
 }
 
@@ -65,12 +87,21 @@ Config& config
 : application_(application),
 profile_(profile),
 config_(config),
-history_(new History()),
-bookmarks_(new Bookmarks()),
-download_manager_(std::make_unique<DownloadManager>()) {
+history_(std::make_unique<History>()),
+bookmarks_(std::make_unique<Bookmarks>()),
+download_manager_(
+std::make_unique<DownloadManager>()
+) {
 
-```
-window_ = gtk_application_window_new(gtk_application);
+
+// Cargar datos persistentes antes de mostrar la ventana.
+history_->load();
+bookmarks_->load();
+
+window_ =
+    gtk_application_window_new(
+        gtk_application
+    );
 
 gtk_window_set_title(
     GTK_WINDOW(window_),
@@ -164,21 +195,21 @@ GtkWidget* home =
 bookmarks_button_ =
     gtk_button_new_with_label("☆");
 
+history_button_ =
+    gtk_button_new_with_label("⏱");
+
+downloads_button_ =
+    gtk_button_new_with_label("↓");
+
 gtk_widget_set_tooltip_text(
     bookmarks_button_,
     "Bookmarks (Ctrl+D)"
 );
 
-history_button_ =
-    gtk_button_new_with_label("⏱");
-
 gtk_widget_set_tooltip_text(
     history_button_,
     "History (Ctrl+H)"
 );
-
-downloads_button_ =
-    gtk_button_new_with_label("↓");
 
 gtk_widget_set_tooltip_text(
     downloads_button_,
@@ -347,22 +378,36 @@ open_tab();
 gtk_window_present(
     GTK_WINDOW(window_)
 );
-```
+
 
 }
 
 BrowserWindow::~BrowserWindow() {
-history_panel_.reset();
-bookmarks_panel_.reset();
+// Los popovers deben desvincularse antes de destruir
+// los botones que los contienen.
+if (history_popover_ != nullptr) {
+gtk_widget_unparent(history_popover_);
+history_popover_ = nullptr;
+}
+
+
+if (bookmarks_popover_ != nullptr) {
+    gtk_widget_unparent(bookmarks_popover_);
+    bookmarks_popover_ = nullptr;
+}
+
+if (downloads_popover_ != nullptr) {
+    gtk_widget_unparent(downloads_popover_);
+    downloads_popover_ = nullptr;
+}
+
 downloads_panel_.reset();
+bookmarks_panel_.reset();
+history_panel_.reset();
 
-```
-delete history_;
-history_ = nullptr;
+tabs_.clear();
+active_tab_ = nullptr;
 
-delete bookmarks_;
-bookmarks_ = nullptr;
-```
 
 }
 
@@ -370,7 +415,8 @@ GtkWidget* BrowserWindow::widget() const {
 return window_;
 }
 
-DownloadManager* BrowserWindow::download_manager() const {
+DownloadManager*
+BrowserWindow::download_manager() const {
 return download_manager_.get();
 }
 
@@ -381,7 +427,7 @@ std::make_unique<Tab>(
 profile_
 );
 
-```
+
 Tab& result = *tab;
 
 GtkWidget* previous_control =
@@ -409,7 +455,7 @@ select_tab(&result);
 result.load_home();
 
 return result;
-```
+
 
 }
 
@@ -422,7 +468,7 @@ if (tab == nullptr) {
 return;
 }
 
-```
+
 active_tab_ = tab;
 
 for (const auto& candidate : tabs_) {
@@ -457,7 +503,7 @@ if (bookmarks_panel_) {
         title ? title : ""
     );
 }
-```
+
 
 }
 
@@ -471,7 +517,7 @@ return candidate.get() == tab;
 }
 );
 
-```
+
 if (it == tabs_.end()) {
     return;
 }
@@ -506,15 +552,15 @@ tabs_.erase(it);
 
 if (was_active) {
     const std::size_t next_index =
-        index == tabs_.size()
-            ? index - 1
+        index >= tabs_.size()
+            ? tabs_.size() - 1
             : index;
 
     select_tab(
         tabs_[next_index].get()
     );
 }
-```
+
 
 }
 
@@ -522,17 +568,21 @@ void BrowserWindow::tab_uri_changed(
 Tab* tab,
 const char* uri
 ) {
-if (tab != active_tab_) {
+if (tab == nullptr) {
 return;
 }
 
-```
-gtk_editable_set_text(
-    GTK_EDITABLE(url_bar_),
-    uri ? uri : ""
-);
 
-if (bookmarks_panel_) {
+if (tab == active_tab_) {
+    gtk_editable_set_text(
+        GTK_EDITABLE(url_bar_),
+        uri ? uri : ""
+    );
+}
+
+if (bookmarks_panel_ &&
+    tab == active_tab_) {
+
     const char* title =
         webkit_web_view_get_title(
             tab->view()
@@ -543,14 +593,55 @@ if (bookmarks_panel_) {
         title ? title : ""
     );
 }
-```
+
+
+}
+
+void BrowserWindow::tab_load_finished(Tab* tab) {
+if (tab == nullptr) {
+return;
+}
+
+
+const char* uri =
+    webkit_web_view_get_uri(
+        tab->view()
+    );
+
+if (!is_history_uri(uri)) {
+    return;
+}
+
+const char* title =
+    webkit_web_view_get_title(
+        tab->view()
+    );
+
+history_->add(
+    uri,
+    title ? title : ""
+);
+
+if (tab == active_tab_ &&
+    bookmarks_panel_) {
+
+    bookmarks_panel_->set_current_page(
+        uri,
+        title ? title : ""
+    );
+}
+
+if (history_panel_) {
+    history_panel_->refresh();
+}
+
 
 }
 
 void BrowserWindow::navigate_from_entry() {
 Tab* tab = active_tab();
 
-```
+
 if (tab == nullptr) {
     return;
 }
@@ -573,8 +664,7 @@ if (is_url_candidate(input)) {
         );
 
     if (scheme == nullptr) {
-        uri =
-            "https://" + input;
+        uri = "https://" + input;
     } else {
         uri = input;
         g_free(scheme);
@@ -597,7 +687,7 @@ if (is_url_candidate(input)) {
 tab->load_uri(
     uri.c_str()
 );
-```
+
 
 }
 
@@ -614,12 +704,15 @@ void BrowserWindow::on_back_clicked(
 GtkButton*,
 gpointer user_data
 ) {
-Tab* tab =
+auto* window =
 static_cast<BrowserWindow*>(
 user_data
-)->active_tab();
+);
 
-```
+
+Tab* tab =
+    window->active_tab();
+
 if (tab != nullptr &&
     webkit_web_view_can_go_back(
         tab->view()
@@ -629,7 +722,7 @@ if (tab != nullptr &&
         tab->view()
     );
 }
-```
+
 
 }
 
@@ -637,12 +730,15 @@ void BrowserWindow::on_forward_clicked(
 GtkButton*,
 gpointer user_data
 ) {
-Tab* tab =
+auto* window =
 static_cast<BrowserWindow*>(
 user_data
-)->active_tab();
+);
 
-```
+
+Tab* tab =
+    window->active_tab();
+
 if (tab != nullptr &&
     webkit_web_view_can_go_forward(
         tab->view()
@@ -652,7 +748,7 @@ if (tab != nullptr &&
         tab->view()
     );
 }
-```
+
 
 }
 
@@ -660,18 +756,21 @@ void BrowserWindow::on_reload_clicked(
 GtkButton*,
 gpointer user_data
 ) {
-Tab* tab =
+auto* window =
 static_cast<BrowserWindow*>(
 user_data
-)->active_tab();
+);
 
-```
+
+Tab* tab =
+    window->active_tab();
+
 if (tab != nullptr) {
     webkit_web_view_reload(
         tab->view()
     );
 }
-```
+
 
 }
 
@@ -679,16 +778,19 @@ void BrowserWindow::on_home_clicked(
 GtkButton*,
 gpointer user_data
 ) {
-Tab* tab =
+auto* window =
 static_cast<BrowserWindow*>(
 user_data
-)->active_tab();
+);
 
-```
+
+Tab* tab =
+    window->active_tab();
+
 if (tab != nullptr) {
     tab->load_home();
 }
-```
+
 
 }
 
@@ -732,7 +834,7 @@ void BrowserWindow::setup_keyboard_shortcuts() {
 GtkEventController* key_controller =
 gtk_event_controller_key_new();
 
-```
+
 g_signal_connect(
     key_controller,
     "key-pressed",
@@ -744,7 +846,7 @@ gtk_widget_add_controller(
     window_,
     key_controller
 );
-```
+
 
 }
 
@@ -758,16 +860,16 @@ gpointer user_data
 (void)controller;
 (void)keycode;
 
-```
+
 auto* window =
     static_cast<BrowserWindow*>(
         user_data
     );
 
-gboolean is_ctrl =
+const gboolean is_ctrl =
     state & GDK_CONTROL_MASK;
 
-gboolean is_shift =
+const gboolean is_shift =
     state & GDK_SHIFT_MASK;
 
 if (is_ctrl && keyval == GDK_KEY_t) {
@@ -801,12 +903,10 @@ if (is_ctrl && keyval == GDK_KEY_Tab) {
         );
 
     if (it != window->tabs_.end()) {
-        auto next =
-            std::next(it);
+        auto next = std::next(it);
 
         if (next == window->tabs_.end()) {
-            next =
-                window->tabs_.begin();
+            next = window->tabs_.begin();
         }
 
         window->select_tab(
@@ -837,14 +937,9 @@ if (is_ctrl &&
 
     if (it != window->tabs_.end()) {
         auto prev =
-            std::prev(it);
-
-        if (it == window->tabs_.begin()) {
-            prev =
-                std::prev(
-                    window->tabs_.end()
-                );
-        }
+            it == window->tabs_.begin()
+                ? std::prev(window->tabs_.end())
+                : std::prev(it);
 
         window->select_tab(
             prev->get()
@@ -868,16 +963,6 @@ if (is_ctrl && keyval == GDK_KEY_l) {
     return TRUE;
 }
 
-if (is_ctrl && keyval == GDK_KEY_f) {
-    if (window->active_tab_) {
-        g_warning(
-            "Ctrl+F: Búsqueda en página activada"
-        );
-    }
-
-    return TRUE;
-}
-
 if (is_ctrl && keyval == GDK_KEY_h) {
     window->on_history_button_clicked();
     return TRUE;
@@ -894,20 +979,20 @@ if (is_ctrl && keyval == GDK_KEY_j) {
 }
 
 return FALSE;
-```
+
 
 }
 
 void BrowserWindow::setup_ui_panels() {
 history_panel_ =
 std::make_unique<HistoryPanel>(
-history_
+history_.get()
 );
 
-```
+
 bookmarks_panel_ =
     std::make_unique<BookmarksPanel>(
-        bookmarks_
+        bookmarks_.get()
     );
 
 downloads_panel_ =
@@ -928,9 +1013,8 @@ history_panel_->set_on_entry_activated(
         );
 
         if (history_popover_) {
-            gtk_widget_set_visible(
-                history_popover_,
-                FALSE
+            gtk_popover_popdown(
+                GTK_POPOVER(history_popover_)
             );
         }
     }
@@ -949,9 +1033,8 @@ bookmarks_panel_->set_on_entry_activated(
         );
 
         if (bookmarks_popover_) {
-            gtk_widget_set_visible(
-                bookmarks_popover_,
-                FALSE
+            gtk_popover_popdown(
+                GTK_POPOVER(bookmarks_popover_)
             );
         }
     }
@@ -964,7 +1047,7 @@ bookmarks_panel_->set_on_bookmark_added(
         }
     }
 );
-```
+
 
 }
 
@@ -973,7 +1056,7 @@ if (!history_popover_) {
 history_popover_ =
 gtk_popover_new();
 
-```
+
     GtkWidget* panel =
         history_panel_->create_panel();
 
@@ -992,14 +1075,6 @@ gtk_popover_new();
         history_popover_,
         history_button_
     );
-
-    history_panel_->refresh();
-
-    gtk_popover_popup(
-        GTK_POPOVER(history_popover_)
-    );
-
-    return;
 }
 
 history_panel_->refresh();
@@ -1008,16 +1083,15 @@ if (gtk_widget_get_visible(
         history_popover_
     )) {
 
-    gtk_widget_set_visible(
-        history_popover_,
-        FALSE
+    gtk_popover_popdown(
+        GTK_POPOVER(history_popover_)
     );
 } else {
     gtk_popover_popup(
         GTK_POPOVER(history_popover_)
     );
 }
-```
+
 
 }
 
@@ -1026,7 +1100,7 @@ if (!bookmarks_popover_) {
 bookmarks_popover_ =
 gtk_popover_new();
 
-```
+
     GtkWidget* panel =
         bookmarks_panel_->create_panel();
 
@@ -1045,31 +1119,6 @@ gtk_popover_new();
         bookmarks_popover_,
         bookmarks_button_
     );
-
-    if (active_tab_) {
-        const char* uri =
-            webkit_web_view_get_uri(
-                active_tab_->view()
-            );
-
-        const char* title =
-            webkit_web_view_get_title(
-                active_tab_->view()
-            );
-
-        bookmarks_panel_->set_current_page(
-            uri ? uri : "",
-            title ? title : ""
-        );
-    }
-
-    bookmarks_panel_->refresh();
-
-    gtk_popover_popup(
-        GTK_POPOVER(bookmarks_popover_)
-    );
-
-    return;
 }
 
 if (active_tab_) {
@@ -1095,16 +1144,15 @@ if (gtk_widget_get_visible(
         bookmarks_popover_
     )) {
 
-    gtk_widget_set_visible(
-        bookmarks_popover_,
-        FALSE
+    gtk_popover_popdown(
+        GTK_POPOVER(bookmarks_popover_)
     );
 } else {
     gtk_popover_popup(
         GTK_POPOVER(bookmarks_popover_)
     );
 }
-```
+
 
 }
 
@@ -1113,7 +1161,7 @@ if (!downloads_popover_) {
 downloads_popover_ =
 gtk_popover_new();
 
-```
+
     GtkWidget* panel =
         downloads_panel_->create_panel();
 
@@ -1124,7 +1172,7 @@ gtk_popover_new();
 
     gtk_widget_set_size_request(
         panel,
-        450,
+        500,
         500
     );
 
@@ -1132,14 +1180,6 @@ gtk_popover_new();
         downloads_popover_,
         downloads_button_
     );
-
-    downloads_panel_->refresh();
-
-    gtk_popover_popup(
-        GTK_POPOVER(downloads_popover_)
-    );
-
-    return;
 }
 
 downloads_panel_->refresh();
@@ -1148,15 +1188,14 @@ if (gtk_widget_get_visible(
         downloads_popover_
     )) {
 
-    gtk_widget_set_visible(
-        downloads_popover_,
-        FALSE
+    gtk_popover_popdown(
+        GTK_POPOVER(downloads_popover_)
     );
 } else {
     gtk_popover_popup(
         GTK_POPOVER(downloads_popover_)
     );
 }
-```
+
 
 }
