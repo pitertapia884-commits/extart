@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 #include <webkit/webkit.h>
 
+#include <cstdint>
 #include <string>
 
 class BrowserWindow;
@@ -28,6 +29,13 @@ public:
     void prepare_for_close();
     static void apply_config_to_all_tabs();
 
+    // EXTART 0.4 memory management
+    void touch_activity();
+    void suspend();
+    void resume();
+    bool is_suspended() const;
+    bool can_suspend() const;
+
     void find_text(const std::string& text);
     void find_next();
     void find_previous();
@@ -47,4 +55,11 @@ private:
     GtkWidget* title_label_ = nullptr;
     WebKitFindController* find_controller_ = nullptr;
     std::string last_search_;
+
+    // Saved state for suspended tabs
+    std::string saved_uri_;
+    std::string saved_title_;
+    std::uint64_t last_activity_ = 0;
+    bool suspended_ = false;
+    bool active_ = false;
 };
