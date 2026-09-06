@@ -39,12 +39,12 @@ void SettingsWindow::create_ui() {
     gtk_widget_set_margin_end(general_box, 10);
 
     homepage_entry_ = gtk_entry_new();
-    gtk_entry_set_text(GTK_ENTRY(homepage_entry_), config_.homepage().c_str());
+    gtk_editable_set_text(GTK_EDITABLE(homepage_entry_), config_.homepage().c_str());
     gtk_box_append(GTK_BOX(general_box), gtk_label_new("Página de inicio"));
     gtk_box_append(GTK_BOX(general_box), homepage_entry_);
 
     search_engine_entry_ = gtk_entry_new();
-    gtk_entry_set_text(GTK_ENTRY(search_engine_entry_), config_.search_engine().c_str());
+    gtk_editable_set_text(GTK_EDITABLE(search_engine_entry_), config_.search_engine().c_str());
     gtk_box_append(GTK_BOX(general_box), gtk_label_new("Motor de búsqueda"));
     gtk_box_append(GTK_BOX(general_box), search_engine_entry_);
 
@@ -63,7 +63,8 @@ void SettingsWindow::create_ui() {
     gtk_widget_set_margin_end(downloads_box, 10);
 
     download_directory_entry_ = gtk_entry_new();
-    gtk_entry_set_text(GTK_ENTRY(download_directory_entry_), config_.download_directory().c_str());
+    gtk_editable_set_text(
+        GTK_EDITABLE(download_directory_entry_), config_.download_directory().c_str());
     gtk_box_append(GTK_BOX(downloads_box), gtk_label_new("Carpeta de descargas"));
     gtk_box_append(GTK_BOX(downloads_box), download_directory_entry_);
 
@@ -135,11 +136,20 @@ void SettingsWindow::save() {
 }
 
 void SettingsWindow::clear_site_data() {
-    WebKitCookieManager* cookies =
-        webkit_network_session_get_cookie_manager(profile_.network_session());
-    if (cookies != nullptr) {
-        webkit_cookie_manager_delete_all(cookies, nullptr, nullptr, nullptr);
-    }
+    WebKitWebsiteDataManager* manager =
+        webkit_network_session_get_website_data_manager(profile_.network_session());
+
+    if (manager == nullptr) return;
+
+    webkit_website_data_manager_clear(
+        manager,
+        WEBKIT_WEBSITE_DATA_ALL,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
+    );
 }
 
 void SettingsWindow::on_save_clicked(GtkButton*, gpointer user_data) {
