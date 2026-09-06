@@ -28,6 +28,7 @@ private:
 
     static void on_activate(GtkApplication* application, gpointer user_data);
     static void on_new_window(GSimpleAction* action, GVariant* parameter, gpointer user_data);
+    static gboolean on_window_close_request(GtkWindow* window, gpointer user_data);
     static void on_window_destroyed(GtkWidget* widget, gpointer user_data);
 
     GtkApplication* gtk_application_ = nullptr;
