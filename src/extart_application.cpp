@@ -1,6 +1,7 @@
 #include "extart_application.hpp"
 
 #include "browser_window.hpp"
+#include "settings_window.hpp"
 
 #include <algorithm>
 
@@ -15,11 +16,22 @@ ExtartApplication::ExtartApplication() {
     g_action_map_add_action(G_ACTION_MAP(gtk_application_), G_ACTION(new_window));
     g_object_unref(new_window);
 
-    static const char* const accelerators[] = {"<Control>n", nullptr};
-    gtk_application_set_accels_for_action(gtk_application_, "app.new-window", accelerators);
+    GSimpleAction* settings = g_simple_action_new("settings", nullptr);
+    g_signal_connect(settings, "activate", G_CALLBACK(on_settings), this);
+    g_action_map_add_action(G_ACTION_MAP(gtk_application_), G_ACTION(settings));
+    g_object_unref(settings);
+
+    static const char* const new_window_accelerators[] = {"<Control>n", nullptr};
+    gtk_application_set_accels_for_action(
+        gtk_application_, "app.new-window", new_window_accelerators);
+
+    static const char* const settings_accelerators[] = {"<Control>comma", nullptr};
+    gtk_application_set_accels_for_action(
+        gtk_application_, "app.settings", settings_accelerators);
 }
 
 ExtartApplication::~ExtartApplication() {
+    settings_window_.reset();
     windows_.clear();
     g_clear_object(&gtk_application_);
 }
@@ -33,7 +45,6 @@ void ExtartApplication::present_or_create_window() {
         gtk_window_present(GTK_WINDOW(windows_.front()->widget()));
         return;
     }
-
     create_window();
 }
 
@@ -42,24 +53,16 @@ void ExtartApplication::create_window() {
     auto window = std::make_unique<BrowserWindow>(*this, gtk_application_, profile_, config_);
     GtkWidget* widget = window->widget();
     g_signal_connect(
-        widget,
-        "close-request",
-        G_CALLBACK(on_window_close_request),
-        this
-    );
+        widget, "close-request", G_CALLBACK(on_window_close_request), this);
     g_signal_connect(widget, "destroy", G_CALLBACK(on_window_destroyed), this);
     windows_.push_back(std::move(window));
 }
 
 void ExtartApplication::load_css() {
-    if (css_loaded_) {
-        return;
-    }
+    if (css_loaded_) return;
 
     GdkDisplay* display = gdk_display_get_default();
-    if (display == nullptr) {
-        return;
-    }
+    if (display == nullptr) return;
 
     GtkCssProvider* provider = gtk_css_provider_new();
     gtk_css_provider_load_from_resource(provider, "/cl/extart/style.css");
@@ -72,13 +75,20 @@ void ExtartApplication::load_css() {
 }
 
 void ExtartApplication::remove_window(GtkWidget* widget) {
-    auto it = std::find_if(windows_.begin(), windows_.end(),
+    auto it = std::find_if(
+        windows_.begin(), windows_.end(),
         [widget](const std::unique_ptr<BrowserWindow>& window) {
             return window->widget() == widget;
         });
-    if (it != windows_.end()) {
-        windows_.erase(it);
+    if (it != windows_.end()) windows_.erase(it);
+}
+
+void ExtartApplication::show_settings() {
+    if (!settings_window_) {
+        settings_window_ = std::make_unique<SettingsWindow>(
+            gtk_application_, config_, profile_);
     }
+    settings_window_->present();
 }
 
 void ExtartApplication::on_activate(GtkApplication*, gpointer user_data) {
@@ -89,14 +99,13 @@ void ExtartApplication::on_new_window(GSimpleAction*, GVariant*, gpointer user_d
     static_cast<ExtartApplication*>(user_data)->create_window();
 }
 
-gboolean ExtartApplication::on_window_close_request(
-    GtkWindow* window,
-    gpointer user_data
-) {
+void ExtartApplication::on_settings(GSimpleAction*, GVariant*, gpointer user_data) {
+    static_cast<ExtartApplication*>(user_data)->show_settings();
+}
+
+gboolean ExtartApplication::on_window_close_request(GtkWindow* window, gpointer user_data) {
     auto* application = static_cast<ExtartApplication*>(user_data);
-    if (application == nullptr || window == nullptr) {
-        return FALSE;
-    }
+    if (application == nullptr || window == nullptr) return FALSE;
 
     for (const auto& browser_window : application->windows_) {
         if (browser_window->widget() == GTK_WIDGET(window)) {
@@ -104,7 +113,6 @@ gboolean ExtartApplication::on_window_close_request(
             break;
         }
     }
-
     return FALSE;
 }
 
