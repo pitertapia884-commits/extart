@@ -317,7 +317,12 @@ void DownloadManager::on_destination_selected(
             }
 
             if (pending->uri.empty() || it->uri == pending->uri) {
-                it->filename = g_path_get_basename(path);
+                gchar* basename = g_path_get_basename(path);
+                it->filename =
+                    basename != nullptr && *basename != '\0'
+                        ? basename
+                        : "download";
+                g_free(basename);
                 it->path = path;
                 break;
             }
