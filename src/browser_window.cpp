@@ -5,6 +5,11 @@
 #include "extart_application.hpp"
 #include "profile.hpp"
 #include "tab.hpp"
+#include "history.hpp"
+#include "bookmarks.hpp"
+#include "history_panel.hpp"
+#include "bookmarks_panel.hpp"
+#include "downloads_panel.hpp"
 
 #include <glib.h>
 
@@ -67,6 +72,17 @@ BrowserWindow::BrowserWindow(ExtartApplication& application, GtkApplication* gtk
     GtkWidget* forward = gtk_button_new_with_label("→");
     GtkWidget* reload = gtk_button_new_with_label("↻");
     GtkWidget* home = gtk_button_new_with_label("⌂");
+
+    // Botones para nuevas features
+    bookmarks_button_ = gtk_button_new_with_label("☆");
+    gtk_widget_set_tooltip_text(bookmarks_button_, "Bookmarks (Ctrl+D)");
+
+    history_button_ = gtk_button_new_with_label("⏱");
+    gtk_widget_set_tooltip_text(history_button_, "History (Ctrl+H)");
+
+    downloads_button_ = gtk_button_new_with_label("↓");
+    gtk_widget_set_tooltip_text(downloads_button_, "Downloads (Ctrl+J)");
+
     url_bar_ = gtk_entry_new();
     gtk_widget_set_hexpand(url_bar_, TRUE);
     gtk_entry_set_placeholder_text(GTK_ENTRY(url_bar_), "Search or enter address");
@@ -76,6 +92,9 @@ BrowserWindow::BrowserWindow(ExtartApplication& application, GtkApplication* gtk
     gtk_box_append(GTK_BOX(navigation), forward);
     gtk_box_append(GTK_BOX(navigation), reload);
     gtk_box_append(GTK_BOX(navigation), home);
+    gtk_box_append(GTK_BOX(navigation), bookmarks_button_);
+    gtk_box_append(GTK_BOX(navigation), history_button_);
+    gtk_box_append(GTK_BOX(navigation), downloads_button_);
     gtk_box_append(GTK_BOX(navigation), url_bar_);
 
     content_stack_ = gtk_stack_new();
@@ -94,9 +113,34 @@ BrowserWindow::BrowserWindow(ExtartApplication& application, GtkApplication* gtk
     g_signal_connect(home, "clicked", G_CALLBACK(on_home_clicked), this);
     g_signal_connect(new_tab_button, "clicked", G_CALLBACK(on_new_tab_clicked), this);
 
+    // Conectar botones de UI nuevos
+    g_signal_connect(
+        bookmarks_button_,
+        "clicked",
+        G_CALLBACK(on_bookmarks_button_clicked_cb),
+        this
+    );
+
+    g_signal_connect(
+        history_button_,
+        "clicked",
+        G_CALLBACK(on_history_button_clicked_cb),
+        this
+    );
+
+    g_signal_connect(
+        downloads_button_,
+        "clicked",
+        G_CALLBACK(on_downloads_button_clicked_cb),
+        this
+    );
+
     // Configurar atajos de teclado
     setup_keyboard_shortcuts();
-    
+
+    // Inicializar paneles UI
+    setup_ui_panels();
+
     open_tab();
     gtk_window_present(GTK_WINDOW(window_));
 }
@@ -131,18 +175,28 @@ void BrowserWindow::select_tab(Tab* tab) {
     if (tab == nullptr) {
         return;
     }
+
     active_tab_ = tab;
+
     for (const auto& candidate : tabs_) {
         candidate->set_active(candidate.get() == tab);
     }
+
     gtk_stack_set_visible_child(GTK_STACK(content_stack_), tab->web_view());
+
     const char* uri = webkit_web_view_get_uri(tab->view());
     gtk_editable_set_text(GTK_EDITABLE(url_bar_), uri ? uri : "");
 }
 
 void BrowserWindow::close_tab(Tab* tab) {
-    auto it = std::find_if(tabs_.begin(), tabs_.end(),
-        [tab](const std::unique_ptr<Tab>& candidate) { return candidate.get() == tab; });
+    auto it = std::find_if(
+        tabs_.begin(),
+        tabs_.end(),
+        [tab](const std::unique_ptr<Tab>& candidate) {
+            return candidate.get() == tab;
+        }
+    );
+
     if (it == tabs_.end()) {
         return;
     }
@@ -153,13 +207,17 @@ void BrowserWindow::close_tab(Tab* tab) {
     }
 
     const bool was_active = active_tab_ == tab;
-    const std::size_t index = static_cast<std::size_t>(std::distance(tabs_.begin(), it));
+    const std::size_t index =
+        static_cast<std::size_t>(std::distance(tabs_.begin(), it));
+
     gtk_box_remove(GTK_BOX(tab_bar_), tab->tab_control());
     gtk_stack_remove(GTK_STACK(content_stack_), tab->web_view());
     tabs_.erase(it);
 
     if (was_active) {
-        const std::size_t next_index = index == tabs_.size() ? index - 1 : index;
+        const std::size_t next_index =
+            index == tabs_.size() ? index - 1 : index;
+
         select_tab(tabs_[next_index].get());
     }
 }
@@ -172,18 +230,23 @@ void BrowserWindow::tab_uri_changed(Tab* tab, const char* uri) {
 
 void BrowserWindow::navigate_from_entry() {
     Tab* tab = active_tab();
+
     if (tab == nullptr) {
         return;
     }
 
-    const std::string input = gtk_editable_get_text(GTK_EDITABLE(url_bar_));
+    const std::string input =
+        gtk_editable_get_text(GTK_EDITABLE(url_bar_));
+
     if (input.empty()) {
         return;
     }
 
     std::string uri;
+
     if (is_url_candidate(input)) {
         gchar* scheme = g_uri_parse_scheme(input.c_str());
+
         if (scheme == nullptr) {
             uri = "https://" + input;
         } else {
@@ -191,7 +254,9 @@ void BrowserWindow::navigate_from_entry() {
             g_free(scheme);
         }
     } else {
-        gchar* escaped = g_uri_escape_string(input.c_str(), nullptr, FALSE);
+        gchar* escaped =
+            g_uri_escape_string(input.c_str(), nullptr, FALSE);
+
         uri = config_.search_engine() + escaped;
         g_free(escaped);
     }
@@ -205,6 +270,7 @@ void BrowserWindow::on_address_activate(GtkEntry*, gpointer user_data) {
 
 void BrowserWindow::on_back_clicked(GtkButton*, gpointer user_data) {
     Tab* tab = static_cast<BrowserWindow*>(user_data)->active_tab();
+
     if (tab != nullptr && webkit_web_view_can_go_back(tab->view())) {
         webkit_web_view_go_back(tab->view());
     }
@@ -212,6 +278,7 @@ void BrowserWindow::on_back_clicked(GtkButton*, gpointer user_data) {
 
 void BrowserWindow::on_forward_clicked(GtkButton*, gpointer user_data) {
     Tab* tab = static_cast<BrowserWindow*>(user_data)->active_tab();
+
     if (tab != nullptr && webkit_web_view_can_go_forward(tab->view())) {
         webkit_web_view_go_forward(tab->view());
     }
@@ -219,6 +286,7 @@ void BrowserWindow::on_forward_clicked(GtkButton*, gpointer user_data) {
 
 void BrowserWindow::on_reload_clicked(GtkButton*, gpointer user_data) {
     Tab* tab = static_cast<BrowserWindow*>(user_data)->active_tab();
+
     if (tab != nullptr) {
         webkit_web_view_reload(tab->view());
     }
@@ -226,6 +294,7 @@ void BrowserWindow::on_reload_clicked(GtkButton*, gpointer user_data) {
 
 void BrowserWindow::on_home_clicked(GtkButton*, gpointer user_data) {
     Tab* tab = static_cast<BrowserWindow*>(user_data)->active_tab();
+
     if (tab != nullptr) {
         tab->load_home();
     }
@@ -235,93 +304,234 @@ void BrowserWindow::on_new_tab_clicked(GtkButton*, gpointer user_data) {
     static_cast<BrowserWindow*>(user_data)->open_tab();
 }
 
+// Callbacks compatibles con GCallback
+void BrowserWindow::on_bookmarks_button_clicked_cb(
+    GtkButton*,
+    gpointer user_data
+) {
+    static_cast<BrowserWindow*>(user_data)->on_bookmarks_button_clicked();
+}
+
+void BrowserWindow::on_history_button_clicked_cb(
+    GtkButton*,
+    gpointer user_data
+) {
+    static_cast<BrowserWindow*>(user_data)->on_history_button_clicked();
+}
+
+void BrowserWindow::on_downloads_button_clicked_cb(
+    GtkButton*,
+    gpointer user_data
+) {
+    static_cast<BrowserWindow*>(user_data)->on_downloads_button_clicked();
+}
+
 void BrowserWindow::setup_keyboard_shortcuts() {
-    GtkEventController* key_controller = gtk_event_controller_key_new();
-    g_signal_connect(key_controller, "key-pressed", 
-                    G_CALLBACK(on_key_pressed), this);
+    GtkEventController* key_controller =
+        gtk_event_controller_key_new();
+
+    g_signal_connect(
+        key_controller,
+        "key-pressed",
+        G_CALLBACK(on_key_pressed),
+        this
+    );
+
     gtk_widget_add_controller(window_, key_controller);
 }
 
-gboolean BrowserWindow::on_key_pressed(GtkEventControllerKey* controller, guint keyval,
-                                      guint keycode, GdkModifierType state, gpointer user_data) {
+gboolean BrowserWindow::on_key_pressed(
+    GtkEventControllerKey* controller,
+    guint keyval,
+    guint keycode,
+    GdkModifierType state,
+    gpointer user_data
+) {
     (void)controller;
     (void)keycode;
-    
+
     auto* window = static_cast<BrowserWindow*>(user_data);
+
     gboolean is_ctrl = state & GDK_CONTROL_MASK;
     gboolean is_shift = state & GDK_SHIFT_MASK;
-    
+
     // Ctrl+T = Nueva pestaña
     if (is_ctrl && keyval == GDK_KEY_t) {
         window->open_tab();
         return TRUE;
     }
-    
+
     // Ctrl+W = Cerrar pestaña
     if (is_ctrl && keyval == GDK_KEY_w) {
         if (window->active_tab_) {
             window->close_tab(window->active_tab_);
         }
+
         return TRUE;
     }
-    
+
     // Ctrl+Tab = Siguiente pestaña
     if (is_ctrl && keyval == GDK_KEY_Tab) {
         if (window->tabs_.empty()) {
             return TRUE;
         }
-        
-        auto it = std::find_if(window->tabs_.begin(), window->tabs_.end(),
+
+        auto it = std::find_if(
+            window->tabs_.begin(),
+            window->tabs_.end(),
             [window](const std::unique_ptr<Tab>& tab) {
                 return tab.get() == window->active_tab_;
-            });
-        
+            }
+        );
+
         if (it != window->tabs_.end()) {
             auto next = std::next(it);
+
             if (next == window->tabs_.end()) {
                 next = window->tabs_.begin();
             }
+
             window->select_tab(next->get());
         }
+
         return TRUE;
     }
-    
+
     // Ctrl+Shift+Tab = Pestaña anterior
     if (is_ctrl && is_shift && keyval == GDK_KEY_ISO_Left_Tab) {
         if (window->tabs_.empty()) {
             return TRUE;
         }
-        
-        auto it = std::find_if(window->tabs_.begin(), window->tabs_.end(),
+
+        auto it = std::find_if(
+            window->tabs_.begin(),
+            window->tabs_.end(),
             [window](const std::unique_ptr<Tab>& tab) {
                 return tab.get() == window->active_tab_;
-            });
-        
+            }
+        );
+
         if (it != window->tabs_.end()) {
             auto prev = std::prev(it);
+
             if (it == window->tabs_.begin()) {
                 prev = std::prev(window->tabs_.end());
             }
+
             window->select_tab(prev->get());
         }
+
         return TRUE;
     }
-    
+
     // Ctrl+L = Focus en address bar
     if (is_ctrl && keyval == GDK_KEY_l) {
         gtk_widget_grab_focus(window->url_bar_);
-        gtk_editable_select_region(GTK_EDITABLE(window->url_bar_), 0, -1);
+        gtk_editable_select_region(
+            GTK_EDITABLE(window->url_bar_),
+            0,
+            -1
+        );
+
         return TRUE;
     }
-    
+
     // Ctrl+F = Búsqueda en página
     if (is_ctrl && keyval == GDK_KEY_f) {
         if (window->active_tab_) {
-            // TODO: Mostrar búsqueda UI (por ahora solo notificamos)
             g_warning("Ctrl+F: Búsqueda en página activada");
         }
+
         return TRUE;
     }
-    
+
+    // Ctrl+H = Historial
+    if (is_ctrl && keyval == GDK_KEY_h) {
+        window->on_history_button_clicked();
+        return TRUE;
+    }
+
+    // Ctrl+D = Marcadores
+    if (is_ctrl && keyval == GDK_KEY_d) {
+        window->on_bookmarks_button_clicked();
+        return TRUE;
+    }
+
+    // Ctrl+J = Descargas
+    if (is_ctrl && keyval == GDK_KEY_j) {
+        window->on_downloads_button_clicked();
+        return TRUE;
+    }
+
     return FALSE;
+}
+
+void BrowserWindow::setup_ui_panels() {
+    // Los paneles se crearán on-demand cuando se abran los popovers.
+}
+
+void BrowserWindow::on_history_button_clicked() {
+    if (!history_popover_) {
+        history_popover_ = gtk_popover_new();
+
+        gtk_popover_set_child(
+            GTK_POPOVER(history_popover_),
+            gtk_label_new("History")
+        );
+
+        gtk_widget_set_parent(
+            history_popover_,
+            history_button_
+        );
+
+        gtk_popover_popup(GTK_POPOVER(history_popover_));
+    } else if (gtk_widget_get_visible(history_popover_)) {
+        gtk_widget_set_visible(history_popover_, FALSE);
+    } else {
+        gtk_popover_popup(GTK_POPOVER(history_popover_));
+    }
+}
+
+void BrowserWindow::on_bookmarks_button_clicked() {
+    if (!bookmarks_popover_) {
+        bookmarks_popover_ = gtk_popover_new();
+
+        gtk_popover_set_child(
+            GTK_POPOVER(bookmarks_popover_),
+            gtk_label_new("Bookmarks")
+        );
+
+        gtk_widget_set_parent(
+            bookmarks_popover_,
+            bookmarks_button_
+        );
+
+        gtk_popover_popup(GTK_POPOVER(bookmarks_popover_));
+    } else if (gtk_widget_get_visible(bookmarks_popover_)) {
+        gtk_widget_set_visible(bookmarks_popover_, FALSE);
+    } else {
+        gtk_popover_popup(GTK_POPOVER(bookmarks_popover_));
+    }
+}
+
+void BrowserWindow::on_downloads_button_clicked() {
+    if (!downloads_popover_) {
+        downloads_popover_ = gtk_popover_new();
+
+        gtk_popover_set_child(
+            GTK_POPOVER(downloads_popover_),
+            gtk_label_new("Downloads")
+        );
+
+        gtk_widget_set_parent(
+            downloads_popover_,
+            downloads_button_
+        );
+
+        gtk_popover_popup(GTK_POPOVER(downloads_popover_));
+    } else if (gtk_widget_get_visible(downloads_popover_)) {
+        gtk_widget_set_visible(downloads_popover_, FALSE);
+    } else {
+        gtk_popover_popup(GTK_POPOVER(downloads_popover_));
+    }
 }
