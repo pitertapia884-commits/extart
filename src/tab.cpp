@@ -84,6 +84,21 @@ void Tab::apply_config() {
     }
 }
 
+void Tab::prepare_for_close() {
+    if (web_view_ == nullptr) return;
+
+    // Cancel any active navigation before the widget is removed from the
+    // stack. This prevents a closing tab from keeping network/rendering work
+    // alive while GTK is tearing the WebView down.
+    webkit_web_view_stop_loading(view());
+
+    if (find_controller_ != nullptr) {
+        webkit_find_controller_search_finish(find_controller_);
+    }
+
+    last_search_.clear();
+}
+
 void Tab::apply_config_to_all_tabs() {
     for (Tab* tab : live_tabs()) {
         if (tab != nullptr) tab->apply_config();
