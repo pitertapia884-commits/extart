@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(extart VERSION 0.3 LANGUAGES C CXX)
+project(extart VERSION 0.4 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -39,6 +39,7 @@ add_executable(extart
     src/history_panel.cpp
     src/bookmarks_panel.cpp
     src/downloads_panel.cpp
+    src/settings_window.cpp
     ${GRESOURCE_C}
 )
 
