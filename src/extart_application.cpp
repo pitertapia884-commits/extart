@@ -1,6 +1,7 @@
 #include "extart_application.hpp"
 
 #include "browser_window.hpp"
+#include "session_manager.hpp"
 #include "settings_window.hpp"
 
 #include <algorithm>
@@ -49,6 +50,8 @@ void ExtartApplication::present_or_create_window() {
 }
 
 void ExtartApplication::create_window() {
+    const bool first_window = windows_.empty();
+
     load_css();
     auto window = std::make_unique<BrowserWindow>(*this, gtk_application_, profile_, config_);
     GtkWidget* widget = window->widget();
@@ -56,6 +59,10 @@ void ExtartApplication::create_window() {
         widget, "close-request", G_CALLBACK(on_window_close_request), this);
     g_signal_connect(widget, "destroy", G_CALLBACK(on_window_destroyed), this);
     windows_.push_back(std::move(window));
+
+    if (first_window && config_.restore_session()) {
+        session_restore(widget);
+    }
 }
 
 void ExtartApplication::load_css() {
@@ -109,6 +116,9 @@ gboolean ExtartApplication::on_window_close_request(GtkWindow* window, gpointer 
 
     for (const auto& browser_window : application->windows_) {
         if (browser_window->widget() == GTK_WIDGET(window)) {
+            if (application->config_.restore_session()) {
+                session_save(browser_window->widget());
+            }
             browser_window->prepare_for_shutdown();
             break;
         }
