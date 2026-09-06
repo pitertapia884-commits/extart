@@ -28,7 +28,22 @@ Config& config);
 
 GtkWidget* widget() const;
 
-void prepare_for_shutdown();
+void prepare_for_shutdown() {
+    if (history_popover_ != nullptr) {
+        gtk_widget_unparent(history_popover_);
+        history_popover_ = nullptr;
+    }
+
+    if (bookmarks_popover_ != nullptr) {
+        gtk_widget_unparent(bookmarks_popover_);
+        bookmarks_popover_ = nullptr;
+    }
+
+    if (downloads_popover_ != nullptr) {
+        gtk_widget_unparent(downloads_popover_);
+        downloads_popover_ = nullptr;
+    }
+}
 
 void select_tab(Tab* tab);
 void close_tab(Tab* tab);
