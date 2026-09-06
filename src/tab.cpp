@@ -53,14 +53,9 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
 }
 
 Tab::~Tab() {
-    // Disconnect callbacks before stopping WebKit work so no signal can
-    // target this object while it is being destroyed.
-    if (web_view_ != nullptr) {
-        g_signal_handlers_disconnect_by_data(web_view_, this);
-    }
-
-    prepare_for_close();
-
+    // The WebView is removed from the GTK hierarchy by BrowserWindow before
+    // this object is destroyed. Do not call WebKit APIs here: the widget may
+    // already have been finalized by GTK at this point.
     auto& tabs = live_tabs();
     tabs.erase(std::remove(tabs.begin(), tabs.end(), this), tabs.end());
     find_controller_ = nullptr;
@@ -99,9 +94,7 @@ void Tab::apply_config() {
 void Tab::prepare_for_close() {
     if (web_view_ == nullptr) return;
 
-    // Stop navigation and find operations before the WebView is released.
-    // This avoids leaving asynchronous work attached to a tab that is being
-    // removed and helps WebKit release resources promptly.
+    // Must be called before BrowserWindow removes the WebView from GTK.
     webkit_web_view_stop_loading(view());
 
     if (find_controller_ != nullptr) {
