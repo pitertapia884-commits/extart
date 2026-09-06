@@ -42,6 +42,12 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
         window_.download_manager()->set_download_directory(
             config.download_directory()
         );
+        window_.download_manager()->set_ask_download_location(
+            config.ask_download_location()
+        );
+        window_.download_manager()->set_parent_window(
+            GTK_WINDOW(window_.widget())
+        );
         window_.download_manager()->setup_for_web_view(view());
     }
 
