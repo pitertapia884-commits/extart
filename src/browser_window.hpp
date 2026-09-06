@@ -23,7 +23,6 @@ GtkApplication* gtk_application,
 Profile& profile,
 Config& config);
 
-
 ~BrowserWindow();
 
 GtkWidget* widget() const;
@@ -44,6 +43,8 @@ void prepare_for_shutdown() {
         downloads_popover_ = nullptr;
     }
 }
+
+const Config& config() const { return config_; }
 
 void select_tab(Tab* tab);
 void close_tab(Tab* tab);
