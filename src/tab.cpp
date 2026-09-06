@@ -82,6 +82,21 @@ void Tab::apply_config() {
             settings,
             config.popups_enabled()
         );
+
+        // EXTART favors a small memory footprint over keeping complete pages
+        // alive in WebKit's back/forward page cache. Navigation still works;
+        // pages that are evicted are simply loaded again when revisited.
+        webkit_settings_set_enable_page_cache(settings, FALSE);
+
+        // Use a Chromium-compatible identity so sites do not classify EXTART
+        // as Safari/WebKitGTK while retaining an explicit EXTART brand token.
+        // HTTP User-Agent values are kept ASCII-compatible for interoperability.
+        webkit_settings_set_user_agent(
+            settings,
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 "
+            "EXTART/0.4 (Bread)"
+        );
     }
 
     if (window_.download_manager() != nullptr) {
