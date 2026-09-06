@@ -1,5 +1,7 @@
 #include "bookmarks_panel.hpp"
 
+#include "bookmarks.hpp"
+
 #include <utility>
 
 BookmarksPanel::BookmarksPanel(Bookmarks* bookmarks)
@@ -9,6 +11,7 @@ BookmarksPanel::BookmarksPanel(Bookmarks* bookmarks)
 GtkWidget* BookmarksPanel::create_panel() {
     if (panel_ != nullptr) {
         populate_list();
+        update_add_button();
         return panel_;
     }
 
@@ -27,7 +30,12 @@ GtkWidget* BookmarksPanel::create_panel() {
 
     add_button_ = gtk_button_new_with_label("☆");
     gtk_widget_set_tooltip_text(add_button_, "Agregar marcador");
-    g_signal_connect(add_button_, "clicked", G_CALLBACK(on_add_clicked), this);
+    g_signal_connect(
+        add_button_,
+        "clicked",
+        G_CALLBACK(on_add_clicked),
+        this
+    );
 
     gtk_box_append(GTK_BOX(header), title_label_);
     gtk_box_append(GTK_BOX(header), add_button_);
@@ -35,7 +43,9 @@ GtkWidget* BookmarksPanel::create_panel() {
 
     list_box_ = gtk_list_box_new();
     gtk_list_box_set_selection_mode(
-        GTK_LIST_BOX(list_box_), GTK_SELECTION_NONE);
+        GTK_LIST_BOX(list_box_),
+        GTK_SELECTION_NONE
+    );
     gtk_widget_set_vexpand(list_box_, TRUE);
     gtk_widget_set_hexpand(list_box_, TRUE);
     gtk_box_append(GTK_BOX(panel_), list_box_);
@@ -93,7 +103,6 @@ void BookmarksPanel::populate_list() {
 
         GtkWidget* title_label =
             gtk_label_new(bm.title.c_str());
-
         gtk_label_set_wrap(GTK_LABEL(title_label), TRUE);
         gtk_widget_set_hexpand(title_label, TRUE);
         gtk_label_set_xalign(GTK_LABEL(title_label), 0.0);
@@ -152,9 +161,14 @@ void BookmarksPanel::update_add_button() {
         return;
     }
 
-    const bool bookmarked =
-        bookmarks_ != nullptr &&
+    const bool valid_page =
         !current_url_.empty() &&
+        current_url_ != "about:blank" &&
+        current_url_.rfind("extart://", 0) != 0;
+
+    const bool bookmarked =
+        valid_page &&
+        bookmarks_ != nullptr &&
         bookmarks_->is_bookmarked(current_url_);
 
     gtk_button_set_label(
@@ -168,6 +182,8 @@ void BookmarksPanel::update_add_button() {
             ? "Eliminar marcador"
             : "Agregar marcador"
     );
+
+    gtk_widget_set_sensitive(add_button_, valid_page);
 }
 
 void BookmarksPanel::on_add_clicked(
@@ -175,7 +191,16 @@ void BookmarksPanel::on_add_clicked(
     gpointer user_data
 ) {
     auto* self = static_cast<BookmarksPanel*>(user_data);
-    if (!self || !self->bookmarks_ || self->current_url_.empty()) {
+    if (!self || !self->bookmarks_) {
+        return;
+    }
+
+    const bool valid_page =
+        !self->current_url_.empty() &&
+        self->current_url_ != "about:blank" &&
+        self->current_url_.rfind("extart://", 0) != 0;
+
+    if (!valid_page) {
         return;
     }
 
@@ -206,7 +231,10 @@ void BookmarksPanel::on_open_clicked(
     }
 
     const char* url = static_cast<const char*>(
-        g_object_get_data(G_OBJECT(button), "bookmark-url")
+        g_object_get_data(
+            G_OBJECT(button),
+            "bookmark-url"
+        )
     );
 
     if (url && *url) {
@@ -224,7 +252,10 @@ void BookmarksPanel::on_remove_clicked(
     }
 
     const char* url = static_cast<const char*>(
-        g_object_get_data(G_OBJECT(button), "bookmark-url")
+        g_object_get_data(
+            G_OBJECT(button),
+            "bookmark-url"
+        )
     );
 
     if (!url || !*url) {
@@ -234,4 +265,13 @@ void BookmarksPanel::on_remove_clicked(
     self->bookmarks_->remove(url);
     self->populate_list();
     self->update_add_button();
+}
+
+void BookmarksPanel::refresh() {
+    if (!panel_) {
+        return;
+    }
+
+    populate_list();
+    update_add_button();
 }
