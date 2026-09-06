@@ -213,7 +213,7 @@ void BookmarksPanel::on_add_clicked(
         );
 
         if (self->on_bookmark_added_) {
-            self->on_bookmark_added_(self->current_url_);
+            self->on_bookmark_added_();
         }
     }
 
