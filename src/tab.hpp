@@ -5,12 +5,11 @@
 #include <string>
 
 class BrowserWindow;
-class Config;
 class Profile;
 
 class Tab {
 public:
-    Tab(BrowserWindow& window, Profile& profile, Config& config);
+    Tab(BrowserWindow& window, Profile& profile);
     ~Tab();
 
     GtkWidget* web_view() const;
