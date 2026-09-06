@@ -53,6 +53,8 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
 }
 
 Tab::~Tab() {
+    prepare_for_close();
+
     auto& tabs = live_tabs();
     tabs.erase(std::remove(tabs.begin(), tabs.end(), this), tabs.end());
     find_controller_ = nullptr;
@@ -87,9 +89,9 @@ void Tab::apply_config() {
 void Tab::prepare_for_close() {
     if (web_view_ == nullptr) return;
 
-    // Cancel any active navigation before the widget is removed from the
-    // stack. This prevents a closing tab from keeping network/rendering work
-    // alive while GTK is tearing the WebView down.
+    // Stop navigation and find operations before the WebView is released.
+    // This avoids leaving asynchronous work attached to a tab that is being
+    // removed and helps WebKit release resources promptly.
     webkit_web_view_stop_loading(view());
 
     if (find_controller_ != nullptr) {
