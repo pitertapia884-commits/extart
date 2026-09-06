@@ -53,11 +53,21 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
 }
 
 Tab::~Tab() {
+    // Disconnect callbacks before stopping WebKit work so no signal can
+    // target this object while it is being destroyed.
+    if (web_view_ != nullptr) {
+        g_signal_handlers_disconnect_by_data(web_view_, this);
+    }
+
     prepare_for_close();
 
     auto& tabs = live_tabs();
     tabs.erase(std::remove(tabs.begin(), tabs.end(), this), tabs.end());
     find_controller_ = nullptr;
+    web_view_ = nullptr;
+    tab_control_ = nullptr;
+    select_button_ = nullptr;
+    title_label_ = nullptr;
 }
 
 GtkWidget* Tab::web_view() const { return web_view_; }
