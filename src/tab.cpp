@@ -39,6 +39,9 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
     );
 
     if (window_.download_manager() != nullptr) {
+        window_.download_manager()->set_download_directory(
+            config.download_directory()
+        );
         window_.download_manager()->setup_for_web_view(view());
     }
 
