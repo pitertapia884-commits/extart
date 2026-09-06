@@ -25,6 +25,7 @@ public:
     void set_title(const char* title);
     void set_active(bool active);
     void apply_config();
+    static void apply_config_to_all_tabs();
 
     void find_text(const std::string& text);
     void find_next();
