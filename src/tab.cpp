@@ -5,7 +5,16 @@
 #include "config.hpp"
 #include "profile.hpp"
 
+#include <algorithm>
 #include <string>
+#include <vector>
+
+namespace {
+std::vector<Tab*>& live_tabs() {
+    static std::vector<Tab*> tabs;
+    return tabs;
+}
+}
 
 Tab::Tab(BrowserWindow& window, Profile& profile)
 : window_(window) {
@@ -18,6 +27,7 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
     gtk_widget_set_hexpand(web_view_, TRUE);
     gtk_widget_set_vexpand(web_view_, TRUE);
 
+    live_tabs().push_back(this);
     apply_config();
 
     g_signal_connect(web_view_, "load-changed", G_CALLBACK(on_load_changed), this);
@@ -43,6 +53,8 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
 }
 
 Tab::~Tab() {
+    auto& tabs = live_tabs();
+    tabs.erase(std::remove(tabs.begin(), tabs.end(), this), tabs.end());
     find_controller_ = nullptr;
 }
 
@@ -69,6 +81,12 @@ void Tab::apply_config() {
         window_.download_manager()->set_download_directory(config.download_directory());
         window_.download_manager()->set_ask_download_location(config.ask_download_location());
         window_.download_manager()->set_parent_window(GTK_WINDOW(window_.widget()));
+    }
+}
+
+void Tab::apply_config_to_all_tabs() {
+    for (Tab* tab : live_tabs()) {
+        if (tab != nullptr) tab->apply_config();
     }
 }
 
@@ -106,11 +124,13 @@ void Tab::set_active(bool active) {
 }
 
 void Tab::on_tab_selected(GtkButton*, gpointer user_data) {
-    static_cast<Tab*>(user_data)->window_.select_tab(static_cast<Tab*>(user_data));
+    auto* tab = static_cast<Tab*>(user_data);
+    tab->window_.select_tab(tab);
 }
 
 void Tab::on_close_clicked(GtkButton*, gpointer user_data) {
-    static_cast<Tab*>(user_data)->window_.close_tab(static_cast<Tab*>(user_data));
+    auto* tab = static_cast<Tab*>(user_data);
+    tab->window_.close_tab(tab);
 }
 
 void Tab::on_load_changed(WebKitWebView* view, WebKitLoadEvent event, gpointer user_data) {
