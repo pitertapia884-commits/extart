@@ -29,6 +29,15 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
 
     g_signal_connect(select_button_, "clicked", G_CALLBACK(on_tab_selected), this);
     g_signal_connect(close_button, "clicked", G_CALLBACK(on_close_clicked), this);
+    
+    // Obtener find controller
+    find_controller_ = webkit_web_view_get_find_controller(WEBKIT_WEB_VIEW(web_view_));
+}
+
+Tab::~Tab() {
+    // GTK maneja la limpieza de widgets automáticamente
+    // Pero limpiamos referencias explícitamente para ser seguros
+    find_controller_ = nullptr;
 }
 
 GtkWidget* Tab::web_view() const {
@@ -91,4 +100,40 @@ void Tab::on_load_changed(WebKitWebView* view, WebKitLoadEvent event, gpointer u
     } else if (event == WEBKIT_LOAD_FINISHED) {
         tab->set_title(webkit_web_view_get_title(view));
     }
+}
+
+void Tab::find_text(const std::string& text) {
+    if (!find_controller_) {
+        return;
+    }
+    
+    last_search_ = text;
+    if (text.empty()) {
+        webkit_find_controller_search_finish(find_controller_);
+    } else {
+        webkit_find_controller_search(find_controller_, text.c_str(), 
+                                     WEBKIT_FIND_OPTIONS_CASE_INSENSITIVE, G_MAXUINT);
+    }
+}
+
+void Tab::find_next() {
+    if (!find_controller_ || last_search_.empty()) {
+        return;
+    }
+    webkit_find_controller_search_next(find_controller_);
+}
+
+void Tab::find_previous() {
+    if (!find_controller_ || last_search_.empty()) {
+        return;
+    }
+    webkit_find_controller_search_previous(find_controller_);
+}
+
+void Tab::clear_find() {
+    if (!find_controller_) {
+        return;
+    }
+    webkit_find_controller_search_finish(find_controller_);
+    last_search_.clear();
 }

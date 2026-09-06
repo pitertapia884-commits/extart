@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=EXTART
+Comment=Minimalist web browser for Linux
+Exec=extart %u
+Icon=extart
+Categories=Network;WebBrowser;GTK;
+MimeType=text/html;text/xml;application/xhtml+xml;application/x-mimearchive;image/svg+xml;
+Keywords=browser;web;network;
+Terminal=false
+StartupNotify=true
+Version=1.0

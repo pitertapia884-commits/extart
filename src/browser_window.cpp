@@ -1,6 +1,7 @@
 #include "browser_window.hpp"
 
 #include "config.hpp"
+#include "download_manager.hpp"
 #include "extart_application.hpp"
 #include "profile.hpp"
 #include "tab.hpp"
@@ -40,7 +41,8 @@ bool is_url_candidate(const std::string& text) {
 
 BrowserWindow::BrowserWindow(ExtartApplication& application, GtkApplication* gtk_application,
                              Profile& profile, Config& config)
-    : application_(application), profile_(profile), config_(config) {
+    : application_(application), profile_(profile), config_(config),
+      download_manager_(std::make_unique<DownloadManager>()) {
     window_ = gtk_application_window_new(gtk_application);
     gtk_window_set_title(GTK_WINDOW(window_), "EXTART");
     gtk_window_set_default_size(GTK_WINDOW(window_), 1200, 800);
@@ -92,6 +94,9 @@ BrowserWindow::BrowserWindow(ExtartApplication& application, GtkApplication* gtk
     g_signal_connect(home, "clicked", G_CALLBACK(on_home_clicked), this);
     g_signal_connect(new_tab_button, "clicked", G_CALLBACK(on_new_tab_clicked), this);
 
+    // Configurar atajos de teclado
+    setup_keyboard_shortcuts();
+    
     open_tab();
     gtk_window_present(GTK_WINDOW(window_));
 }
@@ -100,6 +105,10 @@ BrowserWindow::~BrowserWindow() = default;
 
 GtkWidget* BrowserWindow::widget() const {
     return window_;
+}
+
+DownloadManager* BrowserWindow::download_manager() const {
+    return download_manager_.get();
 }
 
 Tab& BrowserWindow::open_tab() {
@@ -224,4 +233,95 @@ void BrowserWindow::on_home_clicked(GtkButton*, gpointer user_data) {
 
 void BrowserWindow::on_new_tab_clicked(GtkButton*, gpointer user_data) {
     static_cast<BrowserWindow*>(user_data)->open_tab();
+}
+
+void BrowserWindow::setup_keyboard_shortcuts() {
+    GtkEventController* key_controller = gtk_event_controller_key_new();
+    g_signal_connect(key_controller, "key-pressed", 
+                    G_CALLBACK(on_key_pressed), this);
+    gtk_widget_add_controller(window_, key_controller);
+}
+
+gboolean BrowserWindow::on_key_pressed(GtkEventControllerKey* controller, guint keyval,
+                                      guint keycode, GdkModifierType state, gpointer user_data) {
+    (void)controller;
+    (void)keycode;
+    
+    auto* window = static_cast<BrowserWindow*>(user_data);
+    gboolean is_ctrl = state & GDK_CONTROL_MASK;
+    gboolean is_shift = state & GDK_SHIFT_MASK;
+    
+    // Ctrl+T = Nueva pestaña
+    if (is_ctrl && keyval == GDK_KEY_t) {
+        window->open_tab();
+        return TRUE;
+    }
+    
+    // Ctrl+W = Cerrar pestaña
+    if (is_ctrl && keyval == GDK_KEY_w) {
+        if (window->active_tab_) {
+            window->close_tab(window->active_tab_);
+        }
+        return TRUE;
+    }
+    
+    // Ctrl+Tab = Siguiente pestaña
+    if (is_ctrl && keyval == GDK_KEY_Tab) {
+        if (window->tabs_.empty()) {
+            return TRUE;
+        }
+        
+        auto it = std::find_if(window->tabs_.begin(), window->tabs_.end(),
+            [window](const std::unique_ptr<Tab>& tab) {
+                return tab.get() == window->active_tab_;
+            });
+        
+        if (it != window->tabs_.end()) {
+            auto next = std::next(it);
+            if (next == window->tabs_.end()) {
+                next = window->tabs_.begin();
+            }
+            window->select_tab(next->get());
+        }
+        return TRUE;
+    }
+    
+    // Ctrl+Shift+Tab = Pestaña anterior
+    if (is_ctrl && is_shift && keyval == GDK_KEY_ISO_Left_Tab) {
+        if (window->tabs_.empty()) {
+            return TRUE;
+        }
+        
+        auto it = std::find_if(window->tabs_.begin(), window->tabs_.end(),
+            [window](const std::unique_ptr<Tab>& tab) {
+                return tab.get() == window->active_tab_;
+            });
+        
+        if (it != window->tabs_.end()) {
+            auto prev = std::prev(it);
+            if (it == window->tabs_.begin()) {
+                prev = std::prev(window->tabs_.end());
+            }
+            window->select_tab(prev->get());
+        }
+        return TRUE;
+    }
+    
+    // Ctrl+L = Focus en address bar
+    if (is_ctrl && keyval == GDK_KEY_l) {
+        gtk_widget_grab_focus(window->url_bar_);
+        gtk_editable_select_region(GTK_EDITABLE(window->url_bar_), 0, -1);
+        return TRUE;
+    }
+    
+    // Ctrl+F = Búsqueda en página
+    if (is_ctrl && keyval == GDK_KEY_f) {
+        if (window->active_tab_) {
+            // TODO: Mostrar búsqueda UI (por ahora solo notificamos)
+            g_warning("Ctrl+F: Búsqueda en página activada");
+        }
+        return TRUE;
+    }
+    
+    return FALSE;
 }

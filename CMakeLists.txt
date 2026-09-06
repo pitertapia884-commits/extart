@@ -32,6 +32,10 @@ add_executable(extart
     src/tab.cpp
     src/profile.cpp
     src/config.cpp
+    src/history.cpp
+    src/download_manager.cpp
+    src/bookmarks.cpp
+    src/webkit_memory.cpp
     ${GRESOURCE_C}
 )
 

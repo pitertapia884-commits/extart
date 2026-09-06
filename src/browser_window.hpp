@@ -9,6 +9,7 @@ class Config;
 class ExtartApplication;
 class Profile;
 class Tab;
+class DownloadManager;
 
 class BrowserWindow {
 public:
@@ -20,11 +21,13 @@ public:
     void select_tab(Tab* tab);
     void close_tab(Tab* tab);
     void tab_uri_changed(Tab* tab, const char* uri);
+    DownloadManager* download_manager() const;
 
 private:
     Tab* active_tab() const;
     Tab& open_tab();
     void navigate_from_entry();
+    void setup_keyboard_shortcuts();
 
     static void on_address_activate(GtkEntry* entry, gpointer user_data);
     static void on_back_clicked(GtkButton* button, gpointer user_data);
@@ -32,6 +35,10 @@ private:
     static void on_reload_clicked(GtkButton* button, gpointer user_data);
     static void on_home_clicked(GtkButton* button, gpointer user_data);
     static void on_new_tab_clicked(GtkButton* button, gpointer user_data);
+    
+    // Atajos de teclado
+    static gboolean on_key_pressed(GtkEventControllerKey* controller, guint keyval,
+                                   guint keycode, GdkModifierType state, gpointer user_data);
 
     ExtartApplication& application_;
     Profile& profile_;
@@ -42,4 +49,5 @@ private:
     GtkWidget* url_bar_ = nullptr;
     std::vector<std::unique_ptr<Tab>> tabs_;
     Tab* active_tab_ = nullptr;
+    std::unique_ptr<DownloadManager> download_manager_;
 };
