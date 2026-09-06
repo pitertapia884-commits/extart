@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "profile.hpp"
+#include "tab.hpp"
 
 SettingsWindow::SettingsWindow(GtkApplication* application, Config& config, Profile& profile)
     : application_(application), config_(config), profile_(profile) {
@@ -63,8 +64,7 @@ void SettingsWindow::create_ui() {
     gtk_widget_set_margin_end(downloads_box, 10);
 
     download_directory_entry_ = gtk_entry_new();
-    gtk_editable_set_text(
-        GTK_EDITABLE(download_directory_entry_), config_.download_directory().c_str());
+    gtk_editable_set_text(GTK_EDITABLE(download_directory_entry_), config_.download_directory().c_str());
     gtk_box_append(GTK_BOX(downloads_box), gtk_label_new("Carpeta de descargas"));
     gtk_box_append(GTK_BOX(downloads_box), download_directory_entry_);
 
@@ -103,7 +103,7 @@ void SettingsWindow::create_ui() {
     GtkWidget* buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_halign(buttons, GTK_ALIGN_END);
 
-    GtkWidget* clear_button = gtk_button_new_with_label("Limpiar cookies");
+    GtkWidget* clear_button = gtk_button_new_with_label("Limpiar datos del sitio");
     g_signal_connect(clear_button, "clicked", G_CALLBACK(on_clear_data_clicked), this);
     gtk_box_append(GTK_BOX(buttons), clear_button);
 
@@ -133,6 +133,9 @@ void SettingsWindow::save() {
     config_.set_sound_enabled(gtk_check_button_get_active(GTK_CHECK_BUTTON(sound_)));
     config_.set_popups_enabled(gtk_check_button_get_active(GTK_CHECK_BUTTON(popups_)));
     config_.save();
+
+    // Los WebViews ya abiertos reciben la nueva configuración inmediatamente.
+    Tab::apply_config_to_all_tabs();
 }
 
 void SettingsWindow::clear_site_data() {
