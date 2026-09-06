@@ -144,8 +144,7 @@ void SettingsWindow::clear_site_data() {
     webkit_website_data_manager_clear(
         manager,
         WEBKIT_WEBSITE_DATA_ALL,
-        nullptr,
-        nullptr,
+        0,
         nullptr,
         nullptr,
         nullptr
