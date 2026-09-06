@@ -9,7 +9,7 @@ class Bookmarks;
 class BookmarksPanel {
 public:
     using OnEntryActivated = std::function<void(const std::string& url)>;
-    using OnBookmarkAdded = std::function<void(const std::string& url)>;
+    using OnBookmarkAdded = std::function<void()>;
 
     explicit BookmarksPanel(Bookmarks* bookmarks);
     ~BookmarksPanel() = default;
