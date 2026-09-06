@@ -5,6 +5,7 @@
 #include "settings_window.hpp"
 
 #include <algorithm>
+#include <utility>
 
 ExtartApplication::ExtartApplication() {
     config_.load();
@@ -130,7 +131,8 @@ void ExtartApplication::on_window_destroyed(GtkWidget* widget, gpointer user_dat
     auto* application = static_cast<ExtartApplication*>(user_data);
     if (application == nullptr || widget == nullptr) return;
 
-    g_idle_add(remove_window_idle, new std::pair<ExtartApplication*, GtkWidget*>(application, widget));
+    auto* data = new std::pair<ExtartApplication*, GtkWidget*>(application, widget);
+    g_idle_add(remove_window_idle, data);
 }
 
 gboolean ExtartApplication::remove_window_idle(gpointer user_data) {
