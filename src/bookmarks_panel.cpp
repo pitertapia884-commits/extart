@@ -4,6 +4,8 @@
 
 #include <glib.h>
 
+#include <utility>
+
 BookmarksPanel::BookmarksPanel(Bookmarks* bookmarks)
     : bookmarks_(bookmarks) {
 }
@@ -19,41 +21,22 @@ GtkWidget* BookmarksPanel::create_panel() {
     gtk_widget_set_margin_top(box, 12);
     gtk_widget_set_margin_bottom(box, 12);
 
-    // Sección: página actual
     current_page_box_ =
-        gtk_box_new(
-            GTK_ORIENTATION_VERTICAL,
-            6
-        );
+        gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
 
     GtkWidget* current_label =
         gtk_label_new("Current page");
 
-    gtk_widget_add_css_class(
-        current_label,
-        "heading"
-    );
-
-    gtk_label_set_xalign(
-        GTK_LABEL(current_label),
-        0.0
-    );
+    gtk_widget_add_css_class(current_label, "heading");
+    gtk_label_set_xalign(GTK_LABEL(current_label), 0.0);
 
     GtkWidget* current_button_box =
-        gtk_box_new(
-            GTK_ORIENTATION_HORIZONTAL,
-            6
-        );
+        gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
 
     add_button_ =
-        gtk_button_new_with_label(
-            "Add bookmark"
-        );
+        gtk_button_new_with_label("☆ Add bookmark");
 
-    gtk_widget_set_hexpand(
-        add_button_,
-        TRUE
-    );
+    gtk_widget_set_hexpand(add_button_, TRUE);
 
     g_signal_connect(
         add_button_,
@@ -62,42 +45,19 @@ GtkWidget* BookmarksPanel::create_panel() {
         this
     );
 
-    gtk_box_append(
-        GTK_BOX(current_button_box),
-        add_button_
-    );
+    gtk_box_append(GTK_BOX(current_button_box), add_button_);
+    gtk_box_append(GTK_BOX(current_page_box_), current_label);
+    gtk_box_append(GTK_BOX(current_page_box_), current_button_box);
 
-    gtk_box_append(
-        GTK_BOX(current_page_box_),
-        current_label
-    );
-
-    gtk_box_append(
-        GTK_BOX(current_page_box_),
-        current_button_box
-    );
-
-    // Separador
     GtkWidget* separator =
-        gtk_separator_new(
-            GTK_ORIENTATION_HORIZONTAL
-        );
+        gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
 
-    // Sección: lista de marcadores
     GtkWidget* all_label =
         gtk_label_new("Bookmarks");
 
-    gtk_widget_add_css_class(
-        all_label,
-        "heading"
-    );
+    gtk_widget_add_css_class(all_label, "heading");
+    gtk_label_set_xalign(GTK_LABEL(all_label), 0.0);
 
-    gtk_label_set_xalign(
-        GTK_LABEL(all_label),
-        0.0
-    );
-
-    // Lista scrollable
     GtkWidget* scrolled =
         gtk_scrolled_window_new();
 
@@ -107,29 +67,12 @@ GtkWidget* BookmarksPanel::create_panel() {
         GTK_POLICY_AUTOMATIC
     );
 
-    gtk_widget_set_vexpand(
-        scrolled,
-        TRUE
-    );
+    gtk_widget_set_vexpand(scrolled, TRUE);
+    gtk_widget_set_hexpand(scrolled, TRUE);
+    gtk_widget_set_size_request(scrolled, 350, 300);
 
-    gtk_widget_set_hexpand(
-        scrolled,
-        TRUE
-    );
-
-    gtk_widget_set_size_request(
-        scrolled,
-        350,
-        300
-    );
-
-    list_box_ =
-        gtk_list_box_new();
-
-    gtk_widget_add_css_class(
-        list_box_,
-        "navigation-sidebar"
-    );
+    list_box_ = gtk_list_box_new();
+    gtk_widget_add_css_class(list_box_, "navigation-sidebar");
 
     g_signal_connect(
         list_box_,
@@ -143,74 +86,28 @@ GtkWidget* BookmarksPanel::create_panel() {
         list_box_
     );
 
-    // Label para estado vacío
-    empty_label_ =
-        gtk_label_new("No bookmarks yet");
-
-    gtk_widget_add_css_class(
-        empty_label_,
-        "dim-label"
-    );
-
+    empty_label_ = gtk_label_new("No bookmarks yet");
+    gtk_widget_add_css_class(empty_label_, "dim-label");
     gtk_label_set_justify(
         GTK_LABEL(empty_label_),
         GTK_JUSTIFY_CENTER
     );
 
-    // Stack para mostrar lista o vacío
-    GtkWidget* stack =
-        gtk_stack_new();
+    GtkWidget* stack = gtk_stack_new();
 
-    gtk_stack_add_named(
-        GTK_STACK(stack),
-        scrolled,
-        "list"
-    );
+    gtk_stack_add_named(GTK_STACK(stack), scrolled, "list");
+    gtk_stack_add_named(GTK_STACK(stack), empty_label_, "empty");
+    gtk_stack_set_visible_child_name(GTK_STACK(stack), "empty");
 
-    gtk_stack_add_named(
-        GTK_STACK(stack),
-        empty_label_,
-        "empty"
-    );
+    gtk_widget_set_vexpand(stack, TRUE);
+    gtk_widget_set_hexpand(stack, TRUE);
 
-    gtk_stack_set_visible_child_name(
-        GTK_STACK(stack),
-        "empty"
-    );
+    gtk_box_append(GTK_BOX(box), current_page_box_);
+    gtk_box_append(GTK_BOX(box), separator);
+    gtk_box_append(GTK_BOX(box), all_label);
+    gtk_box_append(GTK_BOX(box), stack);
 
-    gtk_widget_set_vexpand(
-        stack,
-        TRUE
-    );
-
-    gtk_widget_set_hexpand(
-        stack,
-        TRUE
-    );
-
-    // Armar panel
-    gtk_box_append(
-        GTK_BOX(box),
-        current_page_box_
-    );
-
-    gtk_box_append(
-        GTK_BOX(box),
-        separator
-    );
-
-    gtk_box_append(
-        GTK_BOX(box),
-        all_label
-    );
-
-    gtk_box_append(
-        GTK_BOX(box),
-        stack
-    );
-
-    populate_list();
-    update_add_button();
+    refresh();
 
     return box;
 }
@@ -221,113 +118,57 @@ void BookmarksPanel::set_current_page(
 ) {
     current_url_ = url;
     current_title_ = title;
-
     update_add_button();
 }
 
 void BookmarksPanel::set_on_entry_activated(
     OnEntryActivated callback
 ) {
-    on_entry_activated_ =
-        std::move(callback);
+    on_entry_activated_ = std::move(callback);
 }
 
 void BookmarksPanel::set_on_bookmark_added(
     OnBookmarkAdded callback
 ) {
-    on_bookmark_added_ =
-        std::move(callback);
+    on_bookmark_added_ = std::move(callback);
 }
 
 void BookmarksPanel::populate_list() {
-    if (!list_box_) {
+    if (!list_box_ || !bookmarks_) {
         return;
     }
 
-    // Limpiar lista
     while (GtkWidget* child =
-               gtk_widget_get_first_child(
-                   list_box_
-               )) {
-
+               gtk_widget_get_first_child(list_box_)) {
         gtk_list_box_remove(
             GTK_LIST_BOX(list_box_),
-            child
+            GTK_LIST_BOX_ROW(child)
         );
     }
 
-    const auto& bookmarks =
-        bookmarks_->bookmarks();
+    const auto& bookmarks = bookmarks_->bookmarks();
 
-    if (bookmarks.empty()) {
-        return;
-    }
-
-    // Agregar cada bookmark
-    for (const auto& bm :
-         bookmarks) {
-
+    for (const auto& bm : bookmarks) {
         GtkWidget* row =
-            gtk_box_new(
-                GTK_ORIENTATION_HORIZONTAL,
-                8
-            );
+            gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
 
-        gtk_widget_set_margin_start(
-            row,
-            8
-        );
+        gtk_widget_set_margin_start(row, 8);
+        gtk_widget_set_margin_end(row, 8);
+        gtk_widget_set_margin_top(row, 6);
+        gtk_widget_set_margin_bottom(row, 6);
 
-        gtk_widget_set_margin_end(
-            row,
-            8
-        );
-
-        gtk_widget_set_margin_top(
-            row,
-            6
-        );
-
-        gtk_widget_set_margin_bottom(
-            row,
-            6
-        );
-
-        // Título del bookmark
         GtkWidget* title_label =
-            gtk_label_new(
-                bm.title.c_str()
-            );
+            gtk_label_new(bm.title.c_str());
 
-        gtk_label_set_wrap(
-            GTK_LABEL(title_label),
-            TRUE
-        );
+        gtk_label_set_wrap(GTK_LABEL(title_label), TRUE);
+        gtk_widget_set_hexpand(title_label, TRUE);
+        gtk_label_set_xalign(GTK_LABEL(title_label), 0.0);
 
-        gtk_widget_set_hexpand(
-            title_label,
-            TRUE
-        );
-
-        gtk_label_set_xalign(
-            GTK_LABEL(title_label),
-            0.0
-        );
-
-        // Botón remover
         GtkWidget* remove_button =
             gtk_button_new_with_label("×");
 
-        gtk_widget_add_css_class(
-            remove_button,
-            "flat"
-        );
-
-        gtk_widget_set_size_request(
-            remove_button,
-            30,
-            30
-        );
+        gtk_widget_add_css_class(remove_button, "flat");
+        gtk_widget_set_size_request(remove_button, 30, 30);
 
         g_signal_connect(
             remove_button,
@@ -336,44 +177,25 @@ void BookmarksPanel::populate_list() {
             this
         );
 
-        // Guardar URL en el botón
         g_object_set_data_full(
             G_OBJECT(remove_button),
             "url",
-            g_strdup(
-                bm.url.c_str()
-            ),
+            g_strdup(bm.url.c_str()),
             g_free
         );
 
-        gtk_box_append(
-            GTK_BOX(row),
-            title_label
-        );
+        gtk_box_append(GTK_BOX(row), title_label);
+        gtk_box_append(GTK_BOX(row), remove_button);
 
-        gtk_box_append(
-            GTK_BOX(row),
-            remove_button
-        );
-
-        // GtkListBoxRow real
         GtkListBoxRow* list_row =
-            GTK_LIST_BOX_ROW(
-                gtk_list_box_row_new()
-            );
+            GTK_LIST_BOX_ROW(gtk_list_box_row_new());
 
-        gtk_list_box_row_set_child(
-            list_row,
-            row
-        );
+        gtk_list_box_row_set_child(list_row, row);
 
-        // Guardar URL en el row
         g_object_set_data_full(
             G_OBJECT(list_row),
             "url",
-            g_strdup(
-                bm.url.c_str()
-            ),
+            g_strdup(bm.url.c_str()),
             g_free
         );
 
@@ -385,15 +207,17 @@ void BookmarksPanel::populate_list() {
 }
 
 void BookmarksPanel::update_add_button() {
-    if (!add_button_ ||
-        !bookmarks_) {
+    if (!add_button_ || !bookmarks_) {
         return;
     }
 
-    bool is_bookmarked =
-        bookmarks_->is_bookmarked(
-            current_url_
-        );
+    const bool has_url =
+        !current_url_.empty() &&
+        current_url_ != "about:blank" &&
+        current_url_.rfind("extart://", 0) != 0;
+
+    const bool is_bookmarked =
+        has_url && bookmarks_->is_bookmarked(current_url_);
 
     if (is_bookmarked) {
         gtk_button_set_label(
@@ -401,11 +225,7 @@ void BookmarksPanel::update_add_button() {
             "★ Bookmarked"
         );
 
-        gtk_widget_set_sensitive(
-            add_button_,
-            FALSE
-        );
-
+        gtk_widget_set_sensitive(add_button_, FALSE);
         gtk_widget_add_css_class(
             add_button_,
             "suggested-action"
@@ -416,11 +236,7 @@ void BookmarksPanel::update_add_button() {
             "☆ Add bookmark"
         );
 
-        gtk_widget_set_sensitive(
-            add_button_,
-            !current_url_.empty()
-        );
-
+        gtk_widget_set_sensitive(add_button_, has_url);
         gtk_widget_remove_css_class(
             add_button_,
             "suggested-action"
@@ -434,27 +250,19 @@ void BookmarksPanel::on_row_activated(
     gpointer user_data
 ) {
     auto* panel =
-        static_cast<BookmarksPanel*>(
-            user_data
-        );
+        static_cast<BookmarksPanel*>(user_data);
 
-    if (!panel ||
-        !panel->on_entry_activated_) {
+    if (!panel || !panel->on_entry_activated_ || !row) {
         return;
     }
 
     const char* url =
         static_cast<const char*>(
-            g_object_get_data(
-                G_OBJECT(row),
-                "url"
-            )
+            g_object_get_data(G_OBJECT(row), "url")
         );
 
-    if (url != nullptr) {
-        panel->on_entry_activated_(
-            std::string(url)
-        );
+    if (url != nullptr && *url != '\0') {
+        panel->on_entry_activated_(std::string(url));
     }
 }
 
@@ -463,13 +271,20 @@ void BookmarksPanel::on_add_bookmark_clicked(
     gpointer user_data
 ) {
     auto* panel =
-        static_cast<BookmarksPanel*>(
-            user_data
-        );
+        static_cast<BookmarksPanel*>(user_data);
 
-    if (!panel ||
-        panel->current_url_.empty() ||
-        !panel->bookmarks_) {
+    if (!panel || !panel->bookmarks_) {
+        return;
+    }
+
+    if (panel->current_url_.empty() ||
+        panel->current_url_ == "about:blank" ||
+        panel->current_url_.rfind("extart://", 0) == 0) {
+        return;
+    }
+
+    if (panel->bookmarks_->is_bookmarked(panel->current_url_)) {
+        panel->update_add_button();
         return;
     }
 
@@ -479,7 +294,6 @@ void BookmarksPanel::on_add_bookmark_clicked(
     );
 
     panel->refresh();
-    panel->update_add_button();
 
     if (panel->on_bookmark_added_) {
         panel->on_bookmark_added_();
@@ -491,66 +305,45 @@ void BookmarksPanel::on_remove_clicked(
     gpointer user_data
 ) {
     auto* panel =
-        static_cast<BookmarksPanel*>(
-            user_data
-        );
+        static_cast<BookmarksPanel*>(user_data);
 
-    if (!panel ||
-        !panel->bookmarks_) {
+    if (!panel || !panel->bookmarks_ || !button) {
         return;
     }
 
     const char* url =
         static_cast<const char*>(
-            g_object_get_data(
-                G_OBJECT(button),
-                "url"
-            )
+            g_object_get_data(G_OBJECT(button), "url")
         );
 
-    if (url != nullptr) {
-        panel->bookmarks_->remove(
-            std::string(url)
-        );
-
+    if (url != nullptr && *url != '\0') {
+        panel->bookmarks_->remove(std::string(url));
         panel->refresh();
     }
 }
 
 void BookmarksPanel::refresh() {
-    if (!list_box_) {
+    if (!list_box_ || !bookmarks_) {
         return;
     }
 
     populate_list();
 
-    // list_box_ -> scrolled -> stack
     GtkWidget* scrolled =
-        gtk_widget_get_parent(
-            list_box_
+        gtk_widget_get_parent(list_box_);
+
+    GtkWidget* stack =
+        scrolled
+            ? gtk_widget_get_parent(scrolled)
+            : nullptr;
+
+    if (stack && GTK_IS_STACK(stack)) {
+        gtk_stack_set_visible_child_name(
+            GTK_STACK(stack),
+            bookmarks_->bookmarks().empty()
+                ? "empty"
+                : "list"
         );
-
-    if (scrolled) {
-        GtkWidget* stack =
-            gtk_widget_get_parent(
-                scrolled
-            );
-
-        if (stack &&
-            GTK_IS_STACK(stack)) {
-
-            if (bookmarks_->bookmarks().empty()) {
-                gtk_stack_set_visible_child_name(
-                    GTK_STACK(stack),
-                    "empty"
-                );
-            } else {
-                gtk_stack_set_visible_child_name(
-                    GTK_STACK(stack),
-                    "list"
-                );
-            }
-        }
     }
 
     update_add_button();
