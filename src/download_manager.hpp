@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gtk/gtk.h>
 #include <webkit/webkit.h>
 #include <string>
 #include <vector>
@@ -27,15 +28,26 @@ public:
     const std::vector<Download>& downloads() const;
     const std::string& download_directory() const;
     void set_download_directory(const std::string& path);
+    void set_ask_download_location(bool enabled);
+    void set_parent_window(GtkWindow* window);
     void clear_old_downloads();
 
 private:
+    struct PendingDestination {
+        DownloadManager* manager = nullptr;
+        WebKitDownload* download = nullptr;
+        std::string uri;
+    };
+
     static void on_download_started(WebKitNetworkSession* session,
                                     WebKitDownload* download,
                                     gpointer user_data);
     static gboolean on_download_decide_destination(WebKitDownload* download,
                                                     const gchar* suggested_filename,
                                                     gpointer user_data);
+    static void on_destination_selected(GObject* source,
+                                        GAsyncResult* result,
+                                        gpointer user_data);
     static void on_download_finished(WebKitDownload* download,
                                      gpointer user_data);
     static void on_download_failed(WebKitDownload* download,
@@ -45,4 +57,6 @@ private:
     std::vector<Download> downloads_;
     std::string download_directory_;
     WebKitNetworkSession* network_session_ = nullptr;
+    GtkWindow* parent_window_ = nullptr;
+    bool ask_download_location_ = false;
 };
