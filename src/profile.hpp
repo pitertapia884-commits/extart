@@ -11,7 +11,9 @@ public:
     Profile& operator=(const Profile&) = delete;
 
     WebKitNetworkSession* network_session() const;
+    WebKitWebContext* web_context() const;
 
 private:
     WebKitNetworkSession* network_session_ = nullptr;
+    WebKitWebContext* web_context_ = nullptr;
 };
