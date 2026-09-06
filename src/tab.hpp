@@ -2,6 +2,7 @@
 
 #include <gtk/gtk.h>
 #include <webkit/webkit.h>
+
 #include <string>
 
 class BrowserWindow;
@@ -12,6 +13,9 @@ public:
     Tab(BrowserWindow& window, Profile& profile);
     ~Tab();
 
+    Tab(const Tab&) = delete;
+    Tab& operator=(const Tab&) = delete;
+
     GtkWidget* web_view() const;
     GtkWidget* tab_control() const;
     WebKitWebView* view() const;
@@ -20,8 +24,8 @@ public:
     void load_uri(const char* uri);
     void set_title(const char* title);
     void set_active(bool active);
-    
-    // Búsqueda en página
+    void apply_config();
+
     void find_text(const std::string& text);
     void find_next();
     void find_previous();
@@ -30,7 +34,9 @@ public:
 private:
     static void on_tab_selected(GtkButton* button, gpointer user_data);
     static void on_close_clicked(GtkButton* button, gpointer user_data);
-    static void on_load_changed(WebKitWebView* view, WebKitLoadEvent event, gpointer user_data);
+    static void on_load_changed(WebKitWebView* view,
+                                WebKitLoadEvent event,
+                                gpointer user_data);
 
     BrowserWindow& window_;
     GtkWidget* web_view_ = nullptr;
