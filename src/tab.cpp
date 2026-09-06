@@ -14,15 +14,117 @@ std::vector<Tab*>& live_tabs() {
     static std::vector<Tab*> tabs;
     return tabs;
 }
+
+WebKitUserContentManager* create_whatsapp_compatibility_manager() {
+    auto* manager = webkit_user_content_manager_new();
+
+    // WebKitGTK correctly changes the HTTP User-Agent when requested, but
+    // JavaScript can still observe WebKitGTK-specific navigator values. Some
+    // WebKitGTK applications have hit the same WhatsApp Web compatibility
+    // check. Keep the compatibility layer narrowly scoped to WhatsApp and
+    // expose a coherent Chrome/Linux identity there.
+    static const char* const script_source = R"JS(
+(function () {
+    const host = window.location.hostname;
+    if (!host || !(host === "whatsapp.com" || host.endsWith(".whatsapp.com"))) {
+        return;
+    }
+
+    const chromeUA =
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+
+    const override = (object, property, value) => {
+        try {
+            Object.defineProperty(object, property, {
+                configurable: true,
+                get: () => value
+            });
+        } catch (_) {
+            // Some WebKit properties are intentionally non-configurable.
+        }
+    };
+
+    override(navigator, "userAgent", chromeUA);
+    override(navigator, "appVersion", chromeUA.substring(8));
+    override(navigator, "platform", "Linux x86_64");
+    override(navigator, "vendor", "Google Inc.");
+
+    // Chromium-based browsers expose userAgentData. WebKitGTK normally does
+    // not, which is another useful signal for compatibility checks.
+    if (!navigator.userAgentData) {
+        const brands = [
+            { brand: "Not_A Brand", version: "99" },
+            { brand: "Chromium", version: "140" },
+            { brand: "Google Chrome", version: "140" }
+        ];
+
+        override(navigator, "userAgentData", {
+            brands,
+            mobile: false,
+            platform: "Linux",
+            getHighEntropyValues: async () => ({
+                brands,
+                mobile: false,
+                platform: "Linux",
+                platformVersion: "0.0.0",
+                architecture: "x86",
+                bitness: "64",
+                model: "",
+                uaFullVersion: "140.0.0.0",
+                fullVersionList: brands
+            })
+        });
+    }
+
+    // Chrome exposes window.chrome. Keep the object minimal: WhatsApp only
+    // needs the browser compatibility signal, not a fake implementation of
+    // Chromium APIs.
+    if (!window.chrome) {
+        try {
+            Object.defineProperty(window, "chrome", {
+                configurable: true,
+                value: { runtime: {} }
+            });
+        } catch (_) {}
+    }
+})();
+)JS";
+
+    const char* const allow_list[] = {
+        "https://whatsapp.com/*",
+        "https://*.whatsapp.com/*",
+        nullptr
+    };
+
+    auto* script = webkit_user_script_new(
+        script_source,
+        WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,
+        WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,
+        allow_list,
+        nullptr
+    );
+
+    webkit_user_content_manager_add_script(manager, script);
+    webkit_user_script_unref(script);
+    return manager;
+}
 }
 
 Tab::Tab(BrowserWindow& window, Profile& profile)
 : window_(window) {
+    WebKitUserContentManager* user_content_manager =
+        create_whatsapp_compatibility_manager();
+
     web_view_ = GTK_WIDGET(g_object_new(
         WEBKIT_TYPE_WEB_VIEW,
+        "web-context", profile.web_context(),
         "network-session", profile.network_session(),
+        "user-content-manager", user_content_manager,
         nullptr
     ));
+
+    g_object_unref(user_content_manager);
 
     gtk_widget_set_hexpand(web_view_, TRUE);
     gtk_widget_set_vexpand(web_view_, TRUE);
@@ -83,25 +185,22 @@ void Tab::apply_config() {
             config.popups_enabled()
         );
 
-        // Keep WebKit's normal page cache enabled. Disabling it made
-        // navigation noticeably slower and is not an appropriate substitute
-        // for fixing actual memory retention.
+        // Keep WebKit's normal page cache enabled. The shared WebContext now
+        // uses the moderate DOCUMENT_BROWSER cache model, so navigation keeps
+        // useful caching without the completely uncached DOCUMENT_VIEWER mode.
         webkit_settings_set_enable_page_cache(settings, TRUE);
 
-        // WebKitGTK has site-specific UA quirks. In particular, its standard
-        // WebKit UA intentionally pretends to be macOS on web.whatsapp.com,
-        // because WhatsApp otherwise blocks WebKitGTK. EXTART already uses a
-        // Linux/Chrome-compatible UA, so do not let that WebKit quirk replace
-        // the platform we explicitly report.
+        // Do not let WebKitGTK's WhatsApp-specific Mac/Safari quirk replace
+        // the Linux/Chrome identity used by EXTART.
         webkit_settings_set_enable_site_specific_quirks(settings, FALSE);
 
-        // Keep a modern browser-compatible identity while explicitly branding
-        // the browser as EXTART. ASCII is intentional for HTTP interoperability.
+        // Use a clean Chrome-compatible Linux UA on the wire. EXTART branding
+        // stays in the application itself; adding an unknown token here can
+        // cause strict browser allow-lists to reject the browser.
         webkit_settings_set_user_agent(
             settings,
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 "
-            "EXTART/0.4 (Bread)"
+            "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
         );
     }
 
