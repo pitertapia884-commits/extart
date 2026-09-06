@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED gtk4)
 pkg_check_modules(WEBKIT REQUIRED webkitgtk-6.0)
-find_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)
+find_program(GLIB_COMPILE_RESOURCES GLIB_COMPILE_RESOURCES REQUIRED)
 
 set(GRESOURCE_XML ${CMAKE_CURRENT_SOURCE_DIR}/resources/extart.gresource.xml)
 set(GRESOURCE_C ${CMAKE_CURRENT_BINARY_DIR}/extart-resources.c)
@@ -36,6 +36,7 @@ add_executable(extart
     src/download_manager.cpp
     src/bookmarks.cpp
     src/webkit_memory.cpp
+    src/memory_manager.cpp
     src/history_panel.cpp
     src/bookmarks_panel.cpp
     src/downloads_panel.cpp
