@@ -88,6 +88,13 @@ void Tab::apply_config() {
         // for fixing actual memory retention.
         webkit_settings_set_enable_page_cache(settings, TRUE);
 
+        // WebKitGTK has site-specific UA quirks. In particular, its standard
+        // WebKit UA intentionally pretends to be macOS on web.whatsapp.com,
+        // because WhatsApp otherwise blocks WebKitGTK. EXTART already uses a
+        // Linux/Chrome-compatible UA, so do not let that WebKit quirk replace
+        // the platform we explicitly report.
+        webkit_settings_set_enable_site_specific_quirks(settings, FALSE);
+
         // Keep a modern browser-compatible identity while explicitly branding
         // the browser as EXTART. ASCII is intentional for HTTP interoperability.
         webkit_settings_set_user_agent(
