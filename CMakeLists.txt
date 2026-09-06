@@ -12,6 +12,9 @@ find_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)
 set(GRESOURCE_XML ${CMAKE_CURRENT_SOURCE_DIR}/resources/extart.gresource.xml)
 set(GRESOURCE_C ${CMAKE_CURRENT_BINARY_DIR}/extart-resources.c)
 
+set(GRESOURCE_XML ${CMAKE_CURRENT_SOURCE_DIR}/resources/extart.gresource.xml)
+set(GRESOURCE_C ${CMAKE_CURRENT_BINARY_DIR}/extart-resources.c)
+
 add_custom_command(
     OUTPUT ${GRESOURCE_C}
     COMMAND ${GLIB_COMPILE_RESOURCES}
@@ -40,6 +43,7 @@ add_executable(extart
     src/bookmarks_panel.cpp
     src/downloads_panel.cpp
     src/settings_window.cpp
+    src/session_manager.cpp
     ${GRESOURCE_C}
 )
 
