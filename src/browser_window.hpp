@@ -28,6 +28,8 @@ Config& config);
 
 GtkWidget* widget() const;
 
+void prepare_for_shutdown();
+
 void select_tab(Tab* tab);
 void close_tab(Tab* tab);
 
