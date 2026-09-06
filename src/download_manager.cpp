@@ -49,8 +49,6 @@ void DownloadManager::setup_for_web_view(WebKitWebView* web_view) {
         return;
     }
 
-    // All EXTART tabs share the same NetworkSession.
-    // Connect the download signal only once.
     if (network_session_ == session) {
         return;
     }
@@ -84,6 +82,14 @@ void DownloadManager::set_download_directory(const std::string& path) {
     if (!path.empty()) {
         download_directory_ = path;
     }
+}
+
+void DownloadManager::set_ask_download_location(bool enabled) {
+    ask_download_location_ = enabled;
+}
+
+void DownloadManager::set_parent_window(GtkWindow* window) {
+    parent_window_ = window;
 }
 
 void DownloadManager::clear_old_downloads() {
@@ -178,13 +184,50 @@ gboolean DownloadManager::on_download_decide_destination(
             ? suggested_filename
             : "download";
 
-    // Keep the file inside the configured download directory.
     gchar* basename = g_path_get_basename(suggested.c_str());
     const std::string filename =
         basename != nullptr && *basename != '\0'
             ? basename
             : "download";
     g_free(basename);
+
+    WebKitURIRequest* request =
+        webkit_download_get_request(download);
+
+    const char* uri =
+        request != nullptr
+            ? webkit_uri_request_get_uri(request)
+            : nullptr;
+
+    if (manager->ask_download_location_ && manager->parent_window_ != nullptr) {
+        auto* pending = new PendingDestination{
+            manager,
+            static_cast<WebKitDownload*>(g_object_ref(download)),
+            uri != nullptr ? uri : ""
+        };
+
+        GtkFileDialog* dialog = gtk_file_dialog_new();
+        gtk_file_dialog_set_title(dialog, "Guardar descarga");
+        gtk_file_dialog_set_initial_name(dialog, filename.c_str());
+
+        GFile* folder = g_file_new_for_path(manager->download_directory_.c_str());
+        gtk_file_dialog_set_initial_folder(dialog, folder);
+        g_object_unref(folder);
+
+        gtk_file_dialog_save(
+            dialog,
+            manager->parent_window_,
+            nullptr,
+            on_destination_selected,
+            pending
+        );
+
+        g_object_unref(dialog);
+
+        // WebKitGTK 6.0 supports asynchronous destination selection here:
+        // returning TRUE pauses the download until set_destination() is called.
+        return TRUE;
+    }
 
     fs::path directory(manager->download_directory_);
     std::error_code ec;
@@ -201,22 +244,11 @@ gboolean DownloadManager::on_download_decide_destination(
 
     const fs::path file_path = directory / filename;
 
-    // WebKitGTK 6.0 expects a filesystem path here, not a file:// URI.
     webkit_download_set_destination(
         download,
         file_path.c_str()
     );
 
-    WebKitURIRequest* request =
-        webkit_download_get_request(download);
-
-    const char* uri =
-        request != nullptr
-            ? webkit_uri_request_get_uri(request)
-            : nullptr;
-
-    // Match the newest unfinished entry. Matching only by URI can associate
-    // the wrong entry when the same URL is downloaded more than once.
     for (auto it = manager->downloads_.rbegin();
          it != manager->downloads_.rend();
          ++it) {
@@ -232,6 +264,70 @@ gboolean DownloadManager::on_download_decide_destination(
     }
 
     return TRUE;
+}
+
+void DownloadManager::on_destination_selected(
+    GObject* source,
+    GAsyncResult* result,
+    gpointer user_data
+) {
+    auto* pending = static_cast<PendingDestination*>(user_data);
+    if (pending == nullptr) {
+        return;
+    }
+
+    DownloadManager* manager = pending->manager;
+    WebKitDownload* download = pending->download;
+
+    GtkFileDialog* dialog = GTK_FILE_DIALOG(source);
+    GError* error = nullptr;
+    GFile* file = gtk_file_dialog_save_finish(dialog, result, &error);
+
+    if (file == nullptr) {
+        if (error != nullptr &&
+            !g_error_matches(error, GTK_DIALOG_ERROR, GTK_DIALOG_ERROR_DISMISSED)) {
+            g_warning("EXTART: unable to choose download destination: %s", error->message);
+        }
+        g_clear_error(&error);
+
+        webkit_download_cancel(download);
+        g_object_unref(download);
+        delete pending;
+        return;
+    }
+
+    char* path = g_file_get_path(file);
+    if (path == nullptr || *path == '\0') {
+        g_free(path);
+        g_object_unref(file);
+        webkit_download_cancel(download);
+        g_object_unref(download);
+        delete pending;
+        return;
+    }
+
+    webkit_download_set_destination(download, path);
+
+    if (manager != nullptr) {
+        for (auto it = manager->downloads_.rbegin();
+             it != manager->downloads_.rend();
+             ++it) {
+            if (!it->path.empty()) {
+                continue;
+            }
+
+            if (pending->uri.empty() || it->uri == pending->uri) {
+                it->filename = g_path_get_basename(path);
+                it->path = path;
+                break;
+            }
+        }
+    }
+
+    g_free(path);
+    g_object_unref(file);
+    g_object_unref(download);
+    delete pending;
 }
 
 void DownloadManager::on_download_finished(
