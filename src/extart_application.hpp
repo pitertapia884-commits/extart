@@ -33,6 +33,7 @@ private:
     static void on_settings(GSimpleAction* action, GVariant* parameter, gpointer user_data);
     static gboolean on_window_close_request(GtkWindow* window, gpointer user_data);
     static void on_window_destroyed(GtkWidget* widget, gpointer user_data);
+    static gboolean remove_window_idle(gpointer user_data);
 
     GtkApplication* gtk_application_ = nullptr;
     Config config_;
