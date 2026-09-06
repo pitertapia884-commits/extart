@@ -9,6 +9,7 @@
 #include <vector>
 
 class BrowserWindow;
+class SettingsWindow;
 
 class ExtartApplication {
 public:
@@ -25,9 +26,11 @@ private:
     void load_css();
     void present_or_create_window();
     void remove_window(GtkWidget* widget);
+    void show_settings();
 
     static void on_activate(GtkApplication* application, gpointer user_data);
     static void on_new_window(GSimpleAction* action, GVariant* parameter, gpointer user_data);
+    static void on_settings(GSimpleAction* action, GVariant* parameter, gpointer user_data);
     static gboolean on_window_close_request(GtkWindow* window, gpointer user_data);
     static void on_window_destroyed(GtkWidget* widget, gpointer user_data);
 
@@ -35,5 +38,6 @@ private:
     Config config_;
     Profile profile_;
     std::vector<std::unique_ptr<BrowserWindow>> windows_;
+    std::unique_ptr<SettingsWindow> settings_window_;
     bool css_loaded_ = false;
 };
