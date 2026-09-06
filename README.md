@@ -1,5 +1,9 @@
 # EXTART 🍞
 
+<p align="center">
+  <img src="imagen.png" alt="EXTART" width="900">
+</p>
+
 A minimal web browser for Linux focused on simplicity, efficiency, stability, and low resource usage.
 
 EXTART is built with **C++17**, **GTK4**, and **WebKitGTK 6.0**.
