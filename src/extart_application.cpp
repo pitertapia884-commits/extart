@@ -41,6 +41,12 @@ void ExtartApplication::create_window() {
     load_css();
     auto window = std::make_unique<BrowserWindow>(*this, gtk_application_, profile_, config_);
     GtkWidget* widget = window->widget();
+    g_signal_connect(
+        widget,
+        "close-request",
+        G_CALLBACK(on_window_close_request),
+        this
+    );
     g_signal_connect(widget, "destroy", G_CALLBACK(on_window_destroyed), this);
     windows_.push_back(std::move(window));
 }
@@ -81,6 +87,25 @@ void ExtartApplication::on_activate(GtkApplication*, gpointer user_data) {
 
 void ExtartApplication::on_new_window(GSimpleAction*, GVariant*, gpointer user_data) {
     static_cast<ExtartApplication*>(user_data)->create_window();
+}
+
+gboolean ExtartApplication::on_window_close_request(
+    GtkWindow* window,
+    gpointer user_data
+) {
+    auto* application = static_cast<ExtartApplication*>(user_data);
+    if (application == nullptr || window == nullptr) {
+        return FALSE;
+    }
+
+    for (const auto& browser_window : application->windows_) {
+        if (browser_window->widget() == GTK_WIDGET(window)) {
+            browser_window->prepare_for_shutdown();
+            break;
+        }
+    }
+
+    return FALSE;
 }
 
 void ExtartApplication::on_window_destroyed(GtkWidget* widget, gpointer user_data) {
