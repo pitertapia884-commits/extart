@@ -127,5 +127,20 @@ gboolean ExtartApplication::on_window_close_request(GtkWindow* window, gpointer 
 }
 
 void ExtartApplication::on_window_destroyed(GtkWidget* widget, gpointer user_data) {
-    static_cast<ExtartApplication*>(user_data)->remove_window(widget);
+    auto* application = static_cast<ExtartApplication*>(user_data);
+    if (application == nullptr || widget == nullptr) return;
+
+    g_idle_add(remove_window_idle, new std::pair<ExtartApplication*, GtkWidget*>(application, widget));
+}
+
+gboolean ExtartApplication::remove_window_idle(gpointer user_data) {
+    auto* data = static_cast<std::pair<ExtartApplication*, GtkWidget*>*>(user_data);
+    if (data == nullptr) return G_SOURCE_REMOVE;
+
+    if (data->first != nullptr) {
+        data->first->remove_window(data->second);
+    }
+
+    delete data;
+    return G_SOURCE_REMOVE;
 }
