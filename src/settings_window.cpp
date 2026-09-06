@@ -3,11 +3,7 @@
 #include "config.hpp"
 #include "profile.hpp"
 
-SettingsWindow::SettingsWindow(
-    GtkApplication* application,
-    Config& config,
-    Profile& profile
-)
+SettingsWindow::SettingsWindow(GtkApplication* application, Config& config, Profile& profile)
     : application_(application), config_(config), profile_(profile) {
     create_ui();
 }
@@ -23,7 +19,6 @@ void SettingsWindow::create_ui() {
     window_ = gtk_application_window_new(application_);
     gtk_window_set_title(GTK_WINDOW(window_), "EXTART — Configuración");
     gtk_window_set_default_size(GTK_WINDOW(window_), 560, 620);
-    gtk_window_set_resizable(GTK_WINDOW(window_), TRUE);
 
     GtkWidget* root = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
     gtk_widget_set_margin_top(root, 18);
@@ -45,19 +40,16 @@ void SettingsWindow::create_ui() {
 
     homepage_entry_ = gtk_entry_new();
     gtk_entry_set_text(GTK_ENTRY(homepage_entry_), config_.homepage().c_str());
-    gtk_entry_set_placeholder_text(GTK_ENTRY(homepage_entry_), "Página de inicio");
     gtk_box_append(GTK_BOX(general_box), gtk_label_new("Página de inicio"));
     gtk_box_append(GTK_BOX(general_box), homepage_entry_);
 
     search_engine_entry_ = gtk_entry_new();
     gtk_entry_set_text(GTK_ENTRY(search_engine_entry_), config_.search_engine().c_str());
-    gtk_entry_set_placeholder_text(GTK_ENTRY(search_engine_entry_), "URL con ?q=");
     gtk_box_append(GTK_BOX(general_box), gtk_label_new("Motor de búsqueda"));
     gtk_box_append(GTK_BOX(general_box), search_engine_entry_);
 
     restore_session_ = gtk_check_button_new_with_label("Restaurar sesión al iniciar");
-    gtk_check_button_set_active(
-        GTK_CHECK_BUTTON(restore_session_), config_.restore_session());
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(restore_session_), config_.restore_session());
     gtk_box_append(GTK_BOX(general_box), restore_session_);
 
     gtk_frame_set_child(GTK_FRAME(general), general_box);
@@ -71,14 +63,12 @@ void SettingsWindow::create_ui() {
     gtk_widget_set_margin_end(downloads_box, 10);
 
     download_directory_entry_ = gtk_entry_new();
-    gtk_entry_set_text(
-        GTK_ENTRY(download_directory_entry_), config_.download_directory().c_str());
+    gtk_entry_set_text(GTK_ENTRY(download_directory_entry_), config_.download_directory().c_str());
     gtk_box_append(GTK_BOX(downloads_box), gtk_label_new("Carpeta de descargas"));
     gtk_box_append(GTK_BOX(downloads_box), download_directory_entry_);
 
     ask_download_location_ = gtk_check_button_new_with_label("Preguntar dónde guardar cada descarga");
-    gtk_check_button_set_active(
-        GTK_CHECK_BUTTON(ask_download_location_), config_.ask_download_location());
+    gtk_check_button_set_active(GTK_CHECK_BUTTON(ask_download_location_), config_.ask_download_location());
     gtk_box_append(GTK_BOX(downloads_box), ask_download_location_);
 
     gtk_frame_set_child(GTK_FRAME(downloads), downloads_box);
@@ -112,7 +102,7 @@ void SettingsWindow::create_ui() {
     GtkWidget* buttons = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8);
     gtk_widget_set_halign(buttons, GTK_ALIGN_END);
 
-    GtkWidget* clear_button = gtk_button_new_with_label("Limpiar datos del sitio");
+    GtkWidget* clear_button = gtk_button_new_with_label("Limpiar cookies");
     g_signal_connect(clear_button, "clicked", G_CALLBACK(on_clear_data_clicked), this);
     gtk_box_append(GTK_BOX(buttons), clear_button);
 
@@ -123,33 +113,24 @@ void SettingsWindow::create_ui() {
 
     gtk_box_append(GTK_BOX(root), buttons);
     gtk_window_set_child(GTK_WINDOW(window_), root);
-
-    g_signal_connect(
-        window_, "close-request", G_CALLBACK(on_close_request), this);
+    g_signal_connect(window_, "close-request", G_CALLBACK(on_close_request), this);
 }
 
 void SettingsWindow::present() {
+    if (window_ == nullptr) create_ui();
     gtk_window_present(GTK_WINDOW(window_));
 }
 
 void SettingsWindow::save() {
     config_.set_homepage(gtk_editable_get_text(GTK_EDITABLE(homepage_entry_)));
     config_.set_search_engine(gtk_editable_get_text(GTK_EDITABLE(search_engine_entry_)));
-    config_.set_download_directory(
-        gtk_editable_get_text(GTK_EDITABLE(download_directory_entry_)));
-    config_.set_restore_session(
-        gtk_check_button_get_active(GTK_CHECK_BUTTON(restore_session_)));
-    config_.set_ask_download_location(
-        gtk_check_button_get_active(GTK_CHECK_BUTTON(ask_download_location_)));
-    config_.set_javascript_enabled(
-        gtk_check_button_get_active(GTK_CHECK_BUTTON(javascript_)));
-    config_.set_images_enabled(
-        gtk_check_button_get_active(GTK_CHECK_BUTTON(images_)));
-    config_.set_sound_enabled(
-        gtk_check_button_get_active(GTK_CHECK_BUTTON(sound_)));
-    config_.set_popups_enabled(
-        gtk_check_button_get_active(GTK_CHECK_BUTTON(popups_)));
-
+    config_.set_download_directory(gtk_editable_get_text(GTK_EDITABLE(download_directory_entry_)));
+    config_.set_restore_session(gtk_check_button_get_active(GTK_CHECK_BUTTON(restore_session_)));
+    config_.set_ask_download_location(gtk_check_button_get_active(GTK_CHECK_BUTTON(ask_download_location_)));
+    config_.set_javascript_enabled(gtk_check_button_get_active(GTK_CHECK_BUTTON(javascript_)));
+    config_.set_images_enabled(gtk_check_button_get_active(GTK_CHECK_BUTTON(images_)));
+    config_.set_sound_enabled(gtk_check_button_get_active(GTK_CHECK_BUTTON(sound_)));
+    config_.set_popups_enabled(gtk_check_button_get_active(GTK_CHECK_BUTTON(popups_)));
     config_.save();
 }
 
@@ -163,20 +144,16 @@ void SettingsWindow::clear_site_data() {
 
 void SettingsWindow::on_save_clicked(GtkButton*, gpointer user_data) {
     auto* self = static_cast<SettingsWindow*>(user_data);
-    if (self == nullptr) return;
-    self->save();
+    if (self != nullptr) self->save();
 }
 
 void SettingsWindow::on_clear_data_clicked(GtkButton*, gpointer user_data) {
     auto* self = static_cast<SettingsWindow*>(user_data);
-    if (self == nullptr) return;
-    self->clear_site_data();
+    if (self != nullptr) self->clear_site_data();
 }
 
 gboolean SettingsWindow::on_close_request(GtkWindow*, gpointer user_data) {
     auto* self = static_cast<SettingsWindow*>(user_data);
-    if (self != nullptr) {
-        self->window_ = nullptr;
-    }
+    if (self != nullptr) self->window_ = nullptr;
     return FALSE;
 }
