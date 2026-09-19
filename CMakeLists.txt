@@ -37,6 +37,8 @@ add_executable(extart
     src/tab.cpp
     src/browser_engine.hpp
     src/webkit_engine.cpp
+    src/download_backend.hpp
+    src/webkit_download_backend.cpp
     src/profile.cpp
     src/config.cpp
     src/history.cpp
