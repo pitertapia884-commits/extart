@@ -25,6 +25,7 @@ if(EXTART_ENABLE_GECKO)
 
     set(EXTART_GECKO_DIST "${EXTART_GECKO_ROOT}/obj-extart/dist")
     set(EXTART_GECKO_INCLUDE "${EXTART_GECKO_DIST}/include")
+    set(EXTART_GECKO_LIB "${EXTART_GECKO_DIST}/bin/libxul.so")
 
     if(NOT IS_DIRECTORY "${EXTART_GECKO_INCLUDE}")
         message(FATAL_ERROR "Gecko generated headers are missing: ${EXTART_GECKO_INCLUDE}")
@@ -32,6 +33,10 @@ if(EXTART_ENABLE_GECKO)
 
     if(NOT IS_DIRECTORY "${EXTART_GECKO_DIST}/bin")
         message(FATAL_ERROR "Gecko runtime directory is missing: ${EXTART_GECKO_DIST}/bin")
+    endif()
+
+    if(NOT EXISTS "${EXTART_GECKO_LIB}")
+        message(FATAL_ERROR "Gecko libxul is missing: ${EXTART_GECKO_LIB}")
     endif()
 
     message(STATUS "EXTART Gecko source: ${EXTART_GECKO_ROOT}")
@@ -79,6 +84,8 @@ add_executable(extart
     src/settings_window.cpp
     src/session_manager.cpp
     src/gecko_backend.cpp
+    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_runtime.hpp>
+    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_runtime.cpp>
     $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_engine.hpp>
     $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_engine.cpp>
     ${GRESOURCE_C}
