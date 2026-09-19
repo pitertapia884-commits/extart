@@ -9,6 +9,15 @@ pkg_check_modules(GTK4 REQUIRED gtk4)
 pkg_check_modules(WEBKIT REQUIRED webkitgtk-6.0)
 find_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)
 
+option(EXTART_ENABLE_GECKO "Build the native Gecko embedding backend" OFF)
+
+if(EXTART_ENABLE_GECKO)
+    set(EXTART_GECKO_ROOT "" CACHE PATH "Root of the EXTART Gecko build/source tree")
+    if(NOT EXTART_GECKO_ROOT)
+        message(FATAL_ERROR "EXTART_ENABLE_GECKO requires -DEXTART_GECKO_ROOT=/path/to/gecko")
+    endif()
+endif()
+
 # Gecko migration boundary. Gecko itself is built separately from Mozilla's
 # source tree; EXTART keeps its GTK4 UI independent from Firefox's desktop UI.
 # The current WebKit backend remains temporarily compiled while the embedding
@@ -50,8 +59,8 @@ add_executable(extart
     src/settings_window.cpp
     src/session_manager.cpp
     src/gecko_backend.cpp
-    src/gecko_engine.hpp
-    src/gecko_engine.cpp
+    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_engine.hpp>
+    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_engine.cpp>
     ${GRESOURCE_C}
 )
 
@@ -60,6 +69,14 @@ target_include_directories(extart PRIVATE
     ${WEBKIT_INCLUDE_DIRS}
     src/
 )
+
+if(EXTART_ENABLE_GECKO)
+    target_include_directories(extart PRIVATE
+        ${EXTART_GECKO_ROOT}/obj-extart/dist/include
+        ${EXTART_GECKO_ROOT}/obj-extart/dist/include/nspr
+    )
+    target_compile_definitions(extart PRIVATE EXTART_ENABLE_GECKO=1)
+endif()
 
 target_link_libraries(extart PRIVATE
     ${GTK4_LIBRARIES}
