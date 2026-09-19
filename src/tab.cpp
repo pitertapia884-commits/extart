@@ -20,17 +20,17 @@ std::vector<Tab*>& live_tabs() {
 Tab::Tab(BrowserWindow& window, Profile& profile)
 : window_(window),
   engine_(std::make_unique<WebKitEngine>(profile, window.config())) {
-    engine_->set_callbacks({
-        .uri_changed = [this](const char* uri) {
-            window_.tab_uri_changed(this, uri);
-        },
-        .title_changed = [this](const char* title) {
-            set_title(title);
-        },
-        .load_finished = [this]() {
-            window_.tab_load_finished(this);
-        }
-    });
+    BrowserEngine::Callbacks callbacks;
+    callbacks.uri_changed = [this](const char* uri) {
+        window_.tab_uri_changed(this, uri);
+    };
+    callbacks.title_changed = [this](const char* title) {
+        set_title(title);
+    };
+    callbacks.load_finished = [this]() {
+        window_.tab_load_finished(this);
+    };
+    engine_->set_callbacks(std::move(callbacks));
 
     if (web_view() != nullptr) {
         gtk_widget_set_hexpand(web_view(), TRUE);
