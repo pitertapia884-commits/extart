@@ -38,12 +38,18 @@ Gecko parent/runtime
 
 ## Migration stages
 
-### Stage 1 — remove engine assumptions from EXTART
+### Stage 1 — engine boundary in EXTART — in progress
+
+Completed in this stage:
 
 - Keep the GTK4 browser UI.
-- Introduce an engine boundary.
-- Stop adding new WebKit-specific functionality.
-- Keep the old WebKit backend temporarily so the application remains buildable during the transition.
+- Introduce the engine-neutral `BrowserEngine` interface.
+- Move the existing WebKitGTK implementation into `WebKitEngine`.
+- Remove WebKitGTK types and calls from `Tab` itself.
+- Keep the old WebKit backend temporarily so the application can remain buildable during the transition.
+- Stop adding new WebKit-specific functionality to `Tab`.
+
+The remaining WebKit references in `BrowserWindow` and the download subsystem are intentionally left for later sub-stages. This keeps the first refactor small enough to verify before changing more of the application.
 
 ### Stage 2 — Gecko runtime
 
