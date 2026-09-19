@@ -3,11 +3,10 @@
 #include <gtk/gtk.h>
 
 class Config;
-class Profile;
 
 class SettingsWindow {
 public:
-    SettingsWindow(GtkApplication* application, Config& config, Profile& profile);
+    SettingsWindow(GtkApplication* application, Config& config);
     ~SettingsWindow();
 
     SettingsWindow(const SettingsWindow&) = delete;
@@ -26,7 +25,6 @@ private:
 
     GtkApplication* application_ = nullptr;
     Config& config_;
-    Profile& profile_;
 
     GtkWidget* window_ = nullptr;
     GtkWidget* search_engine_entry_ = nullptr;
