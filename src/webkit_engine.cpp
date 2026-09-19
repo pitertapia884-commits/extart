@@ -226,5 +226,17 @@ void WebKitEngine::on_load_changed(WebKitWebView* view, int event, gpointer user
 }
 
 std::unique_ptr<BrowserEngine> make_browser_engine(Profile& profile, const Config& config) {
+#ifdef EXTART_ENABLE_GECKO
+    static GeckoBackend gecko_backend;
+    static bool gecko_configured = gecko_backend.configure_from_environment();
+
+    if (gecko_configured) {
+        auto engine = std::make_unique<GeckoEngine>(gecko_backend, profile, config);
+        if (engine->native_handle() != nullptr) {
+            return engine;
+        }
+    }
+#endif
+
     return std::make_unique<WebKitEngine>(profile, config);
 }
