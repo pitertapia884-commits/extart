@@ -1,11 +1,12 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <webkit/webkit.h>
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
+class BrowserEngine;
 class BrowserWindow;
 class Profile;
 
@@ -19,7 +20,7 @@ public:
 
     GtkWidget* web_view() const;
     GtkWidget* tab_control() const;
-    WebKitWebView* view() const;
+    gpointer native_view() const;
 
     void load_home();
     void load_uri(const char* uri);
@@ -44,17 +45,12 @@ public:
 private:
     static void on_tab_selected(GtkButton* button, gpointer user_data);
     static void on_close_clicked(GtkButton* button, gpointer user_data);
-    static void on_load_changed(WebKitWebView* view,
-                                WebKitLoadEvent event,
-                                gpointer user_data);
 
     BrowserWindow& window_;
-    GtkWidget* web_view_ = nullptr;
+    std::unique_ptr<BrowserEngine> engine_;
     GtkWidget* tab_control_ = nullptr;
     GtkWidget* select_button_ = nullptr;
     GtkWidget* title_label_ = nullptr;
-    WebKitFindController* find_controller_ = nullptr;
-    std::string last_search_;
 
     // Saved state for suspended tabs
     std::string saved_uri_;
