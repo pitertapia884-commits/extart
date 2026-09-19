@@ -30,7 +30,7 @@ Tab::Tab(BrowserWindow& window, std::unique_ptr<BrowserEngine> engine)
     callbacks.load_finished = [this]() {
         window_.tab_load_finished(this);
     };
-    engine_->set_callbacks(std::move(callbacks));
+    if (engine_) engine_->set_callbacks(std::move(callbacks));
 
     if (web_view() != nullptr) {
         gtk_widget_set_hexpand(web_view(), TRUE);
