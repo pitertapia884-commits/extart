@@ -193,3 +193,7 @@ void WebKitEngine::on_load_changed(WebKitWebView* view, int event, gpointer user
             engine->callbacks_.load_finished();
     }
 }
+
+std::unique_ptr<BrowserEngine> make_browser_engine(Profile& profile, const Config& config) {
+    return std::make_unique<WebKitEngine>(profile, config);
+}
