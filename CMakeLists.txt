@@ -8,16 +8,18 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED gtk4)
 find_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)
 
-option(EXTART_ENABLE_GECKO "Build the native Gecko embedding backend" ON)
+# Native Gecko is the only browser engine; it is required for every EXTART build.
+set(EXTART_GECKO_ROOT "" CACHE PATH "Root of the EXTART Gecko build/source tree")
+set(EXTART_GECKO_REVISION "b16f852ba66d190cacd42d0d43ac4d38bd07c4bd"
+    CACHE STRING "Mozilla source revision expected by EXTART Gecko embedding work")
 
-if(EXTART_ENABLE_GECKO)
+if(NOT EXTART_GECKO_ROOT)
+    message(FATAL_ERROR "EXTART requires -DEXTART_GECKO_ROOT=/path/to/gecko")
+endif()
+
     set(EXTART_GECKO_ROOT "" CACHE PATH "Root of the EXTART Gecko build/source tree")
     set(EXTART_GECKO_REVISION "b16f852ba66d190cacd42d0d43ac4d38bd07c4bd"
         CACHE STRING "Mozilla source revision expected by EXTART Gecko embedding work")
-    if(NOT EXTART_GECKO_ROOT)
-        message(FATAL_ERROR "EXTART_ENABLE_GECKO requires -DEXTART_GECKO_ROOT=/path/to/gecko")
-    endif()
-
     if(NOT IS_DIRECTORY "${EXTART_GECKO_ROOT}")
         message(FATAL_ERROR "EXTART_GECKO_ROOT does not exist: ${EXTART_GECKO_ROOT}")
     endif()
@@ -79,10 +81,10 @@ add_executable(extart
     src/settings_window.cpp
     src/session_manager.cpp
     src/gecko_backend.cpp
-    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_runtime.hpp>
-    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_runtime.cpp>
-    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_engine.hpp>
-    $<$<BOOL:${EXTART_ENABLE_GECKO}>:src/gecko_engine.cpp>
+    src/gecko_runtime.hpp
+    src/gecko_runtime.cpp
+    src/gecko_engine.hpp
+    src/gecko_engine.cpp
     ${GRESOURCE_C}
 )
 
@@ -91,8 +93,7 @@ target_include_directories(extart PRIVATE
     src/
 )
 
-if(EXTART_ENABLE_GECKO)
-    target_include_directories(extart PRIVATE
+target_include_directories(extart PRIVATE
         ${EXTART_GECKO_INCLUDE}
         ${EXTART_GECKO_INCLUDE}/nspr
         ${EXTART_GECKO_ROOT}
@@ -103,18 +104,16 @@ if(EXTART_ENABLE_GECKO)
         ${EXTART_GECKO_ROOT}/gfx/2d
         ${EXTART_GECKO_ROOT}/docshell/base
     )
-    target_compile_definitions(extart PRIVATE
-        EXTART_ENABLE_GECKO=1
-        EXTART_GECKO_REVISION="${EXTART_GECKO_REVISION}")
-endif()
+target_compile_definitions(extart PRIVATE
+    EXTART_ENABLE_GECKO=1
+    EXTART_GECKO_REVISION="${EXTART_GECKO_REVISION}")
 
 target_link_libraries(extart PRIVATE
     ${GTK4_LIBRARIES}
-    $<$<BOOL:${EXTART_ENABLE_GECKO}>:${EXTART_GECKO_LIB}>
+    ${EXTART_GECKO_LIB}
 )
 
-if(EXTART_ENABLE_GECKO)
-    set_target_properties(extart PROPERTIES
+set_target_properties(extart PROPERTIES
         BUILD_RPATH "${EXTART_GECKO_DIST}/bin"
         INSTALL_RPATH "${EXTART_GECKO_DIST}/bin")
 endif()
