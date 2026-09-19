@@ -37,8 +37,8 @@ public:
     void apply_config();
     void prepare_for_close();
     static void apply_config_to_all_tabs();
+    static void clear_site_data_to_all_tabs();
 
-    // EXTART 0.4 memory management
     void touch_activity();
     void suspend();
     void resume();
