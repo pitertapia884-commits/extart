@@ -235,13 +235,23 @@ void GeckoEngine::load_html(const std::string& html, const char* base_uri) {
         return;
     }
 
-    nsCOMPtr<nsIURI> base;
-    if (base_uri && *base_uri) {
-        NS_NewURI(getter_AddRefs(base), nsCString(base_uri));
+    // nsIWebNavigation at the pinned Gecko revision does not expose the
+    // historical LoadURIFromStream helper. Use a data: document for the
+    // engine-neutral HTML entry point instead.
+    (void)base_uri;
+
+    gchar* encoded = g_base64_encode(
+        reinterpret_cast<const guchar*>(html.data()), html.size());
+    if (!encoded) {
+        return;
     }
 
-    nsCOMPtr<nsIInputStream> stream;
-    if (NS_FAILED(NS_NewCStringInputStream(getter_AddRefs(stream), html))) {
+    nsAutoCString spec("data:text/html;base64,");
+    spec.Append(encoded);
+    g_free(encoded);
+
+    nsCOMPtr<nsIURI> target;
+    if (NS_FAILED(NS_NewURI(getter_AddRefs(target), spec)) || !target) {
         return;
     }
 
@@ -255,9 +265,8 @@ void GeckoEngine::load_html(const std::string& html, const char* base_uri) {
     }
 
     options.mLoadFlags = nsIWebNavigation::LOAD_FLAGS_NONE;
-    navigation_->LoadURIFromStream(stream, base, nullptr, nullptr, options);
+    navigation_->LoadURI(target, options);
 }
-
 void GeckoEngine::load_uri(const char* uri) {
     if (!navigation_ || !uri || *uri == '\0') {
         return;
