@@ -5,6 +5,10 @@
 
 #include <string>
 
+class GeckoRuntime;
+class nsIWindowlessBrowser;
+class nsIWebNavigation;
+
 class GeckoEngine final : public BrowserEngine {
 public:
     GeckoEngine(GeckoBackend& backend, Profile& profile, const Config& config);
@@ -37,6 +41,9 @@ public:
 
 private:
     GeckoBackend& backend_;
+    GeckoRuntime* runtime_ = nullptr;
+    nsIWindowlessBrowser* windowless_browser_ = nullptr;
+    nsIWebNavigation* navigation_ = nullptr;
     Profile& profile_;
     Callbacks callbacks_;
     std::string current_uri_;
