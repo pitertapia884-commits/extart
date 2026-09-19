@@ -4,6 +4,8 @@
 #include "gecko_backend.hpp"
 
 #include <string>
+#include <memory>
+#include <cstddef>
 
 class GeckoRuntime;
 class nsIWindowlessBrowser;
