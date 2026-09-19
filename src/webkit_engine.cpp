@@ -164,6 +164,21 @@ void WebKitEngine::setup_downloads(DownloadManager& manager) {
     manager.set_backend(make_webkit_download_backend(profile_.network_session()));
 }
 
+void WebKitEngine::clear_site_data() {
+    WebKitWebsiteDataManager* manager =
+        webkit_network_session_get_website_data_manager(profile_.network_session());
+
+    if (manager == nullptr) return;
+
+    webkit_website_data_manager_clear(
+        manager,
+        WEBKIT_WEBSITE_DATA_ALL,
+        0,
+        nullptr,
+        nullptr,
+        nullptr);
+}
+
 void WebKitEngine::on_load_changed(WebKitWebView* view, int event, gpointer user_data) {
     auto* engine = static_cast<WebKitEngine*>(user_data);
     if (engine == nullptr) return;
