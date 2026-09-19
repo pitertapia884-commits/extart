@@ -8,10 +8,11 @@ bool GeckoBackend::configure(const std::filesystem::path& runtime_root) {
     if (runtime_root.empty()) return false;
 
     std::error_code error;
-    if (!std::filesystem::exists(runtime_root, error) || error) return false;
+    const auto absolute_root = std::filesystem::absolute(runtime_root, error);
+    if (error || !std::filesystem::is_directory(absolute_root, error) || error) return false;
     if (!std::filesystem::is_directory(runtime_root, error) || error) return false;
 
-    runtime_root_ = std::filesystem::absolute(runtime_root, error);
+    runtime_root_ = absolute_root;
     if (error) {
         runtime_root_.clear();
         return false;
