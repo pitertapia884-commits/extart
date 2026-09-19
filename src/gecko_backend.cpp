@@ -47,3 +47,20 @@ std::filesystem::path GeckoBackend::runtime_resource_dir() const {
     if (runtime_root_.empty()) return {};
     return runtime_root_ / "resources";
 }
+
+bool GeckoBackend::runtime_ready() const {
+    if (runtime_root_.empty()) return false;
+
+    std::error_code error;
+    const auto bin = runtime_binary_dir();
+    const auto resources = runtime_resource_dir();
+    const auto include_dir = runtime_root_ / "obj-extart" / "dist" / "include";
+
+    if (!std::filesystem::is_directory(bin, error) || error) return false;
+    if (!std::filesystem::is_directory(resources, error) || error) return false;
+    if (!std::filesystem::is_directory(include_dir, error) || error) return false;
+
+    // Never run the binary here. Its presence is enough to establish that
+    // the expected Mozilla build layout exists for the next embedding stage.
+    return std::filesystem::is_regular_file(bin / "firefox", error) && !error;
+}
