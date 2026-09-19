@@ -8,43 +8,47 @@ A minimal web browser for Linux focused on simplicity, efficiency, stability, an
 
 ## Engine migration: Gecko
 
-EXTART is being migrated from **WebKitGTK 6.0 to Gecko**, while keeping the browser's **GTK4 native UI**.
+EXTART is being migrated from **WebKitGTK 6.0 to native Gecko embedding**, while keeping the browser's **GTK4 native UI**.
 
-The goal is to use Gecko's web platform — HTML/CSS, JavaScript, networking, DOM, graphics, security, and multi-process architecture — without carrying Firefox's desktop browser UI and services into EXTART. Gecko itself provides the core web engine and process infrastructure used by Firefox. citeturn1view0
+The goal is to use Gecko's web platform — HTML/CSS, JavaScript, networking, DOM, graphics, security, and multi-process architecture — without carrying Firefox's desktop browser UI and services into EXTART.
 
-The migration is intentionally being done in stages. Mozilla's current Linux documentation describes building Gecko through the Firefox source tree with `./mach build`; a full Gecko build needs substantial disk space and recommends 8 GB or more of RAM. citeturn1view1
+The migration is being done in small, buildable stages. The current code intentionally keeps WebKitGTK as a temporary backend while the native Gecko host is prepared.
 
 ### Current migration state
 
-- GTK4 UI remains the EXTART application layer.
-- A dedicated `GeckoBackend` integration boundary has been added.
-- EXTART can locate a configured Gecko/Firefox runtime through `EXTART_GECKO_RUNTIME` or the normal Linux `PATH`.
-- The old WebKitGTK backend is still present temporarily so the repository remains buildable while the native Gecko embedding layer is developed.
-- **The browser content is not yet claimed to be Gecko-rendered.** The next stage is the actual native Gecko embedding/process integration.
-
-This separation is deliberate: Mozilla's current source documentation describes Gecko's browser-process architecture and its internal embedding/navigation pieces, but there is no current drop-in GTK4 `WebKitWebView`-style Gecko widget for Linux. citeturn1view0turn6search0
+- GTK4 remains the application UI.
+- `BrowserEngine` isolates browser-engine operations from the tab/window UI.
+- WebKit-specific navigation and download code has been moved behind engine/backend boundaries.
+- `GeckoBackend` now represents a **Gecko runtime directory**, not a Firefox executable.
+- EXTART does **not** launch Firefox as a substitute for embedding Gecko.
+- Native Gecko embedding is the next engine implementation stage.
 
 ## Architecture target
 
 ```text
-EXTART
-├── GTK4 UI
-│   ├── windows
-│   ├── tabs
-│   ├── URL/search bar
-│   ├── bookmarks
-│   ├── history
-│   ├── downloads
-│   └── settings
-│
-└── Gecko
-    ├── HTML / CSS
-    ├── SpiderMonkey
-    ├── DOM / Web APIs
-    ├── Necko networking
-    ├── graphics / WebRender
-    ├── security / sandbox
-    └── multi-process IPC
+EXTART GTK4 UI
+    |
+    +-- BrowserWindow
+    |     +-- tabs
+    |     +-- navigation
+    |     +-- history
+    |     +-- bookmarks
+    |     +-- downloads
+    |     +-- settings
+    |
+    +-- BrowserEngine
+          |
+          +-- GeckoEngine
+                |
+                +-- Gecko runtime
+                +-- nsIWebBrowser / embedding contracts
+                +-- BrowsingContext / nsDocShell
+                +-- BrowserHost / BrowserParent / BrowserChild
+                +-- Gecko content process(es)
+                +-- SpiderMonkey
+                +-- Necko
+                +-- layout / graphics / WebRender
+                +-- security / sandbox
 ```
 
 ## Existing browser features
@@ -66,16 +70,17 @@ EXTART
 
 ## Build
 
-### Requirements
+### Current temporary build
+
+The repository currently builds against WebKitGTK while the Gecko embedding layer is developed.
+
+Requirements:
 
 - Linux
 - C++17 compiler
 - CMake
 - GTK4
-- WebKitGTK 6.0 (temporary migration dependency)
-- Gecko source/build environment for the native engine integration
-
-### Compile
+- WebKitGTK 6.0
 
 ```bash
 git clone https://github.com/pitertapia884-commits/extart.git
@@ -85,7 +90,17 @@ cmake -S . -B build
 cmake --build build
 ```
 
-For Gecko development itself, Mozilla documents the `./mach build` workflow in the Firefox source tree. citeturn1view1
+### Gecko development build
+
+Mozilla's Firefox source tree contains the Gecko engine and the native embedding contracts used by embedders. EXTART's Gecko integration is intended to use those engine components directly rather than starting Firefox as a separate application.
+
+The repository includes a bootstrap helper for preparing a Gecko source/build tree:
+
+```bash
+./tools/bootstrap-gecko.sh
+```
+
+The script only prepares the source/build environment. It does not modify EXTART's runtime backend or claim that Gecko embedding is complete.
 
 ## Project philosophy
 
@@ -114,15 +129,15 @@ EXTART respects XDG directory standards:
 
 ## Gecko integration
 
-The runtime can be explicitly selected with:
+The Gecko runtime is configured as a directory containing the Gecko runtime resources required by the native embedding layer.
+
+The environment variable is only a configuration input for the future native backend:
 
 ```bash
 EXTART_GECKO_RUNTIME=/path/to/gecko-runtime ./build/extart
 ```
 
-If that variable is not set, EXTART searches `PATH` for `firefox` and `firefox-nightly`.
-
-This runtime discovery is only the first integration layer. It does not pretend that launching Firefox is equivalent to embedding Gecko; the native content-view embedding remains the next engineering step.
+It is deliberately **not** interpreted as a Firefox executable path.
 
 ## License
 
