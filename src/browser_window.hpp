@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 class Config;
@@ -50,6 +51,8 @@ public:
     void tab_uri_changed(Tab* tab, const char* uri);
     void tab_load_finished(Tab* tab);
     DownloadManager* download_manager() const;
+    std::vector<std::string> session_uris() const;
+    void restore_session_uris(const std::vector<std::string>& uris);
 
 private:
     Tab* active_tab() const;
