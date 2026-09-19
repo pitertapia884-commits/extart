@@ -7,6 +7,9 @@
 #include <nsIAppShellService.h>
 #include <nsIWebNavigation.h>
 #include <nsIURI.h>
+#include <nsIInputStream.h>
+#include <mozilla/dom/LoadURIOptions.h>
+#include <nsNetUtil.h>
 #include <nsIWindowlessBrowser.h>
 #include <nsString.h>
 
@@ -139,12 +142,45 @@ void GeckoEngine::reload() {
     }
 }
 
-void GeckoEngine::load_html(const std::string&, const char*) {
-    // Navigation requires a verified C++ LoadURIOptions construction path.
+void GeckoEngine::load_html(const std::string& html, const char* base_uri) {
+    if (!navigation_) {
+        return;
+    }
+
+    nsCOMPtr<nsIURI> base;
+    if (base_uri && *base_uri) {
+        NS_NewURI(getter_AddRefs(base), nsCString(base_uri));
+    }
+
+    nsCOMPtr<nsIInputStream> stream;
+    if (NS_FAILED(NS_NewCStringInputStream(getter_AddRefs(stream), html))) {
+        return;
+    }
+
+    mozilla::dom::LoadURIOptions options;
+    options.mTriggeringPrincipal = nullptr;
+    options.mLoadFlags = nsIWebNavigation::LOAD_FLAGS_NONE;
+    navigation_->LoadURIFromStream(stream, base, nullptr, nullptr, options);
 }
 
-void GeckoEngine::load_uri(const char*) {
-    // Navigation requires a verified C++ LoadURIOptions construction path.
+void GeckoEngine::load_uri(const char* uri) {
+    if (!navigation_ || !uri || *uri == '\\0') {
+        return;
+    }
+
+    nsCOMPtr<nsIURI> target;
+    if (NS_FAILED(NS_NewURI(getter_AddRefs(target), nsCString(uri))) || !target) {
+        return;
+    }
+
+    mozilla::dom::LoadURIOptions options;
+    options.mTriggeringPrincipal = nullptr;
+    options.mLoadFlags = nsIWebNavigation::LOAD_FLAGS_NONE;
+    navigation_->LoadURI(target, options);
+    current_uri_ = uri;
+    if (callbacks_.uri_changed) {
+        callbacks_.uri_changed(current_uri_.c_str());
+    }
 }
 
 void GeckoEngine::stop_loading() {
