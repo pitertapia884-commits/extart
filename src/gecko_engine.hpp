@@ -52,7 +52,7 @@ private:
     nsIWidget* gecko_widget_ = nullptr;
     Profile& profile_;
     Callbacks callbacks_;
-    std::string current_uri_;
+    mutable std::string current_uri_;
     std::string current_title_;
     std::string last_search_;
 
