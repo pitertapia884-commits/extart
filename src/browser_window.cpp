@@ -173,6 +173,34 @@ DownloadManager* BrowserWindow::download_manager() const {
     return download_manager_.get();
 }
 
+std::vector<std::string> BrowserWindow::session_uris() const {
+    std::vector<std::string> uris;
+    uris.reserve(tabs_.size());
+    for (const auto& tab : tabs_) {
+        if (!tab) continue;
+        const std::string uri = tab->current_uri();
+        if (uri.empty() || uri == "about:blank" || uri.rfind("extart://", 0) == 0) continue;
+        uris.push_back(uri);
+    }
+    return uris;
+}
+
+void BrowserWindow::restore_session_uris(const std::vector<std::string>& uris) {
+    if (uris.empty()) return;
+    bool first = true;
+    for (const std::string& uri : uris) {
+        if (uri.empty() || uri == "about:blank" || uri.rfind("extart://", 0) == 0) continue;
+        if (first && active_tab_ != nullptr) {
+            active_tab_->load_uri(uri.c_str());
+            first = false;
+            continue;
+        }
+        Tab& tab = open_tab();
+        tab.load_uri(uri.c_str());
+        first = false;
+    }
+}
+
 Tab& BrowserWindow::open_tab() {
     auto tab = std::make_unique<Tab>(*this, profile_);
     Tab& result = *tab;
