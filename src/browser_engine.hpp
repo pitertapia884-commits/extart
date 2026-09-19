@@ -28,6 +28,7 @@ public:
     BrowserEngine& operator=(const BrowserEngine&) = delete;
 
     virtual GtkWidget* widget() const = 0;
+    virtual gpointer native_handle() const = 0;
     virtual void set_callbacks(Callbacks callbacks) = 0;
 
     virtual void load_html(const std::string& html, const char* base_uri) = 0;
@@ -47,13 +48,14 @@ protected:
 };
 
 // Temporary implementation used while EXTART is being migrated away from
-// WebKitGTK. It keeps all WebKit-specific code outside Tab and BrowserWindow.
+// WebKitGTK. It keeps all WebKit-specific code outside Tab.
 class WebKitEngine final : public BrowserEngine {
 public:
     WebKitEngine(Profile& profile, const Config& config);
     ~WebKitEngine() override;
 
     GtkWidget* widget() const override;
+    gpointer native_handle() const override;
     void set_callbacks(Callbacks callbacks) override;
 
     void load_html(const std::string& html, const char* base_uri) override;
@@ -72,10 +74,6 @@ private:
     static void on_load_changed(struct _WebKitWebView* view,
                                  int event,
                                  gpointer user_data);
-
-    void notify_uri_changed();
-    void notify_title_changed();
-    void notify_load_finished();
 
     GtkWidget* web_view_ = nullptr;
     struct _WebKitFindController* find_controller_ = nullptr;
