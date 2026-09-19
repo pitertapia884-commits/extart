@@ -1,11 +1,10 @@
 #include "settings_window.hpp"
 
 #include "config.hpp"
-#include "profile.hpp"
 #include "tab.hpp"
 
-SettingsWindow::SettingsWindow(GtkApplication* application, Config& config, Profile& profile)
-    : application_(application), config_(config), profile_(profile) {
+SettingsWindow::SettingsWindow(GtkApplication* application, Config& config)
+    : application_(application), config_(config) {
     create_ui();
 }
 
