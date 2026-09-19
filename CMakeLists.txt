@@ -8,7 +8,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED gtk4)
 find_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)
 
-option(EXTART_ENABLE_GECKO "Build the native Gecko embedding backend" OFF)
+option(EXTART_ENABLE_GECKO "Build the native Gecko embedding backend" ON)
 
 if(EXTART_ENABLE_GECKO)
     set(EXTART_GECKO_ROOT "" CACHE PATH "Root of the EXTART Gecko build/source tree")
