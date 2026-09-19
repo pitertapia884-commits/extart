@@ -40,12 +40,12 @@ bool GeckoBackend::configure_from_environment() {
 
 std::filesystem::path GeckoBackend::runtime_binary_dir() const {
     if (runtime_root_.empty()) return {};
-    return runtime_root_ / "bin";
+    return runtime_root_ / "obj-extart" / "dist" / "bin";
 }
 
 std::filesystem::path GeckoBackend::runtime_resource_dir() const {
     if (runtime_root_.empty()) return {};
-    return runtime_root_ / "resources";
+    return runtime_root_ / "obj-extart" / "dist" / "resources";
 }
 
 bool GeckoBackend::runtime_ready() const {
