@@ -8,6 +8,7 @@
 class GeckoRuntime;
 class nsIWindowlessBrowser;
 class nsIWebNavigation;
+class nsIWidget;
 
 class GeckoEngine final : public BrowserEngine {
 public:
@@ -44,6 +45,7 @@ private:
     GeckoRuntime* runtime_ = nullptr;
     nsIWindowlessBrowser* windowless_browser_ = nullptr;
     nsIWebNavigation* navigation_ = nullptr;
+    nsIWidget* gecko_widget_ = nullptr;
     Profile& profile_;
     Callbacks callbacks_;
     std::string current_uri_;
