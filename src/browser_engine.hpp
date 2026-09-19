@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 
 #include <functional>
+#include <memory>
 #include <string>
 
 class Config;
@@ -50,6 +51,8 @@ public:
 protected:
     BrowserEngine() = default;
 };
+
+std::unique_ptr<BrowserEngine> make_browser_engine(Profile& profile, const Config& config);
 
 class WebKitEngine final : public BrowserEngine {
 public:
