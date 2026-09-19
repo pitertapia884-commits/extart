@@ -6,6 +6,8 @@
 
 #include <webkit/webkit.h>
 
+#include <utility>
+
 namespace {
 
 WebKitUserContentManager* create_whatsapp_compatibility_manager() {
@@ -131,6 +133,10 @@ GtkWidget* WebKitEngine::widget() const {
     return web_view_;
 }
 
+gpointer WebKitEngine::native_handle() const {
+    return web_view_;
+}
+
 void WebKitEngine::set_callbacks(Callbacks callbacks) {
     callbacks_ = std::move(callbacks);
 }
@@ -227,16 +233,16 @@ void WebKitEngine::on_load_changed(WebKitWebView* view,
                                     gpointer user_data) {
     auto* engine = static_cast<WebKitEngine*>(user_data);
 
-    if (event == WEBKIT_LOAD_COMMITTED) {
-        engine->callbacks_.uri_changed(
-            webkit_web_view_get_uri(view)
-        );
+    if (event == WEBKIT_LOAD_COMMITTED && engine->callbacks_.uri_changed) {
+        engine->callbacks_.uri_changed(webkit_web_view_get_uri(view));
     }
 
     if (event == WEBKIT_LOAD_FINISHED) {
-        engine->callbacks_.title_changed(
-            webkit_web_view_get_title(view)
-        );
-        engine->callbacks_.load_finished();
+        if (engine->callbacks_.title_changed) {
+            engine->callbacks_.title_changed(webkit_web_view_get_title(view));
+        }
+        if (engine->callbacks_.load_finished) {
+            engine->callbacks_.load_finished();
+        }
     }
 }
