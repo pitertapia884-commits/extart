@@ -132,6 +132,15 @@ void Tab::apply_config_to_all_tabs() {
     }
 }
 
+void Tab::clear_site_data_to_all_tabs() {
+    for (Tab* tab : live_tabs()) {
+        if (tab != nullptr && tab->engine_) {
+            tab->engine_->clear_site_data();
+            return;
+        }
+    }
+}
+
 void Tab::load_home() {
     GError* error = nullptr;
     GBytes* bytes = g_resources_lookup_data(
