@@ -84,6 +84,7 @@ private:
                                  int event,
                                  gpointer user_data);
 
+    Profile& profile_;
     GtkWidget* web_view_ = nullptr;
     struct _WebKitFindController* find_controller_ = nullptr;
     Callbacks callbacks_;
