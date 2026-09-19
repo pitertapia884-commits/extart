@@ -8,7 +8,6 @@
 
 class BrowserEngine;
 class BrowserWindow;
-class Profile;
 
 class Tab {
 public:
