@@ -94,7 +94,7 @@ void ExtartApplication::remove_window(GtkWidget* widget) {
 void ExtartApplication::show_settings() {
     if (!settings_window_) {
         settings_window_ = std::make_unique<SettingsWindow>(
-            gtk_application_, config_, profile_);
+            gtk_application_, config_);
     }
     settings_window_->present();
 }
