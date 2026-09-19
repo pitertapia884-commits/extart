@@ -85,6 +85,21 @@ GeckoEngine::GeckoEngine(GeckoBackend& backend, Profile& profile, const Config& 
 
     gecko_widget_->Resize(1, 1, true);
     gecko_widget_->Show(true);
+
+    // Force creation of Gecko's native WindowRenderer. PuppetWidget uses a
+    // fallback renderer in the parent process at this embedding boundary;
+    // keeping this explicit prevents the GTK bridge from silently operating
+    // without a compositor object.
+    if (gecko_widget_->GetWindowRenderer() == nullptr) {
+        gecko_widget_->Show(false);
+        gecko_widget_->Release();
+        gecko_widget_ = nullptr;
+        windowless_browser_->Close();
+        windowless_browser_->Release();
+        windowless_browser_ = nullptr;
+        navigation_->Release();
+        navigation_ = nullptr;
+    }
 }
 
 GeckoEngine::~GeckoEngine() {
