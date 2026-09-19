@@ -110,7 +110,14 @@ endif()
 target_link_libraries(extart PRIVATE
     ${GTK4_LIBRARIES}
     ${WEBKIT_LIBRARIES}
+    $<$<BOOL:${EXTART_ENABLE_GECKO}>:${EXTART_GECKO_LIB}>
 )
+
+if(EXTART_ENABLE_GECKO)
+    set_target_properties(extart PROPERTIES
+        BUILD_RPATH "${EXTART_GECKO_DIST}/bin"
+        INSTALL_RPATH "${EXTART_GECKO_DIST}/bin")
+endif()
 
 target_compile_options(extart PRIVATE
     ${GTK4_CFLAGS_OTHER}
