@@ -22,6 +22,7 @@
 #include <PuppetWidget.h>
 #include <cstring>
 #include <utility>
+#include <stdexcept>
 
 namespace {
 GeckoRuntime& process_runtime(GeckoBackend& backend) {
@@ -112,6 +113,24 @@ GeckoEngine::GeckoEngine(GeckoBackend& backend, Profile& profile, const Config& 
         navigation_->Release();
         navigation_ = nullptr;
     }
+}
+
+
+std::unique_ptr<BrowserEngine> make_browser_engine(Profile& profile, const Config& config) {
+    static GeckoBackend backend;
+
+    if (!backend.configured() && !backend.configure_from_environment()) {
+        throw std::runtime_error(
+            "EXTART requires EXTART_GECKO_ROOT for the native Gecko engine: " +
+            backend.last_error());
+    }
+
+    auto engine = std::make_unique<GeckoEngine>(backend, profile, config);
+    if (engine->native_handle() == nullptr || engine->widget() == nullptr) {
+        throw std::runtime_error("EXTART could not initialize the native Gecko engine");
+    }
+
+    return engine;
 }
 
 GeckoEngine::~GeckoEngine() {
