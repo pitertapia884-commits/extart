@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK4 REQUIRED gtk4)
-pkg_check_modules(WEBKIT REQUIRED webkitgtk-6.0)
 find_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)
 
 option(EXTART_ENABLE_GECKO "Build the native Gecko embedding backend" OFF)
@@ -45,8 +44,7 @@ endif()
 
 # Gecko migration boundary. Gecko itself is built separately from Mozilla's
 # source tree; EXTART keeps its GTK4 UI independent from Firefox's desktop UI.
-# The current WebKit backend remains temporarily compiled while the embedding
-# layer is being replaced with the native Gecko integration.
+# Native Gecko is the only browser engine. The GTK4 UI remains engine-neutral.
 
 set(GRESOURCE_XML ${CMAKE_CURRENT_SOURCE_DIR}/resources/extart.gresource.xml)
 set(GRESOURCE_C ${CMAKE_CURRENT_BINARY_DIR}/extart-resources.c)
@@ -70,9 +68,6 @@ add_executable(extart
     src/browser_window.cpp
     src/tab.cpp
     src/browser_engine.hpp
-    src/webkit_engine.cpp
-    src/download_backend.hpp
-    src/webkit_download_backend.cpp
     src/profile.cpp
     src/config.cpp
     src/history.cpp
@@ -93,7 +88,6 @@ add_executable(extart
 
 target_include_directories(extart PRIVATE
     ${GTK4_INCLUDE_DIRS}
-    ${WEBKIT_INCLUDE_DIRS}
     src/
 )
 
@@ -116,7 +110,6 @@ endif()
 
 target_link_libraries(extart PRIVATE
     ${GTK4_LIBRARIES}
-    ${WEBKIT_LIBRARIES}
     $<$<BOOL:${EXTART_ENABLE_GECKO}>:${EXTART_GECKO_LIB}>
 )
 
@@ -128,5 +121,4 @@ endif()
 
 target_compile_options(extart PRIVATE
     ${GTK4_CFLAGS_OTHER}
-    ${WEBKIT_CFLAGS_OTHER}
 )
