@@ -138,6 +138,7 @@ BrowserWindow::BrowserWindow(
     setup_keyboard_shortcuts();
     setup_ui_panels();
     open_tab();
+
     gtk_window_present(GTK_WINDOW(window_));
 }
 
@@ -159,8 +160,6 @@ BrowserWindow::~BrowserWindow() {
     bookmarks_panel_.reset();
     history_panel_.reset();
 
-    // WebKit cleanup must happen while each WebView is still a valid GTK
-    // child. Do not call WebKit APIs from Tab::~Tab().
     for (const auto& tab : tabs_) {
         if (tab) tab->prepare_for_close();
     }
@@ -200,13 +199,16 @@ void BrowserWindow::select_tab(Tab* tab) {
 
     gtk_stack_set_visible_child(GTK_STACK(content_stack_), tab->web_view());
 
-    const char* uri = webkit_web_view_get_uri(tab->view());
-    gtk_editable_set_text(GTK_EDITABLE(url_bar_), uri ? uri : "");
+    const std::string uri = tab->current_uri();
+    gtk_editable_set_text(GTK_EDITABLE(url_bar_), uri.c_str());
 
     if (bookmarks_panel_) {
-        const char* title = webkit_web_view_get_title(tab->view());
-        bookmarks_panel_->set_current_page(uri ? uri : "", title ? title : "");
+        const std::string title = tab->current_title();
+        bookmarks_panel_->set_current_page(uri, title);
     }
+
+    tab->touch_activity();
+    if (tab->is_suspended()) tab->resume();
 }
 
 void BrowserWindow::close_tab(Tab* tab) {
@@ -226,8 +228,6 @@ void BrowserWindow::close_tab(Tab* tab) {
     const bool was_active = active_tab_ == tab;
     const std::size_t index = static_cast<std::size_t>(std::distance(tabs_.begin(), it));
 
-    // Stop loading and release find state BEFORE GTK removes the WebView.
-    // This is the safe point to let WebKit clean up resources owned by the tab.
     tab->prepare_for_close();
 
     gtk_box_remove(GTK_BOX(tab_bar_), tab->tab_control());
@@ -248,22 +248,24 @@ void BrowserWindow::tab_uri_changed(Tab* tab, const char* uri) {
     }
 
     if (bookmarks_panel_ && tab == active_tab_) {
-        const char* title = webkit_web_view_get_title(tab->view());
-        bookmarks_panel_->set_current_page(uri ? uri : "", title ? title : "");
+        const std::string title = tab->current_title();
+        bookmarks_panel_->set_current_page(uri ? uri : "", title);
     }
+
+    tab->touch_activity();
 }
 
 void BrowserWindow::tab_load_finished(Tab* tab) {
     if (tab == nullptr) return;
 
-    const char* uri = webkit_web_view_get_uri(tab->view());
-    if (!is_history_uri(uri)) return;
+    const std::string uri = tab->current_uri();
+    if (!is_history_uri(uri.c_str())) return;
 
-    const char* title = webkit_web_view_get_title(tab->view());
-    history_->add(uri, title ? title : "");
+    const std::string title = tab->current_title();
+    history_->add(uri, title);
 
     if (tab == active_tab_ && bookmarks_panel_) {
-        bookmarks_panel_->set_current_page(uri, title ? title : "");
+        bookmarks_panel_->set_current_page(uri, title);
     }
     if (history_panel_) history_panel_->refresh();
 }
@@ -299,23 +301,19 @@ void BrowserWindow::on_address_activate(GtkEntry*, gpointer user_data) {
 void BrowserWindow::on_back_clicked(GtkButton*, gpointer user_data) {
     auto* window = static_cast<BrowserWindow*>(user_data);
     Tab* tab = window->active_tab();
-    if (tab != nullptr && webkit_web_view_can_go_back(tab->view())) {
-        webkit_web_view_go_back(tab->view());
-    }
+    if (tab != nullptr) tab->go_back();
 }
 
 void BrowserWindow::on_forward_clicked(GtkButton*, gpointer user_data) {
     auto* window = static_cast<BrowserWindow*>(user_data);
     Tab* tab = window->active_tab();
-    if (tab != nullptr && webkit_web_view_can_go_forward(tab->view())) {
-        webkit_web_view_go_forward(tab->view());
-    }
+    if (tab != nullptr) tab->go_forward();
 }
 
 void BrowserWindow::on_reload_clicked(GtkButton*, gpointer user_data) {
     auto* window = static_cast<BrowserWindow*>(user_data);
     Tab* tab = window->active_tab();
-    if (tab != nullptr) webkit_web_view_reload(tab->view());
+    if (tab != nullptr) tab->reload();
 }
 
 void BrowserWindow::on_home_clicked(GtkButton*, gpointer user_data) {
@@ -460,9 +458,9 @@ void BrowserWindow::on_bookmarks_button_clicked() {
     }
 
     if (active_tab_) {
-        const char* uri = webkit_web_view_get_uri(active_tab_->view());
-        const char* title = webkit_web_view_get_title(active_tab_->view());
-        bookmarks_panel_->set_current_page(uri ? uri : "", title ? title : "");
+        const std::string uri = active_tab_->current_uri();
+        const std::string title = active_tab_->current_title();
+        bookmarks_panel_->set_current_page(uri, title);
     }
 
     bookmarks_panel_->refresh();
