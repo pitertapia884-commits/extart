@@ -59,10 +59,11 @@ void ExtartApplication::create_window() {
     g_signal_connect(
         widget, "close-request", G_CALLBACK(on_window_close_request), this);
     g_signal_connect(widget, "destroy", G_CALLBACK(on_window_destroyed), this);
+    BrowserWindow* window_ptr = window.get();
     windows_.push_back(std::move(window));
 
     if (first_window && config_.restore_session()) {
-        session_restore(widget);
+        session_restore(*window_ptr);
     }
 }
 
@@ -118,7 +119,7 @@ gboolean ExtartApplication::on_window_close_request(GtkWindow* window, gpointer 
     for (const auto& browser_window : application->windows_) {
         if (browser_window->widget() == GTK_WIDGET(window)) {
             if (application->config_.restore_session()) {
-                session_save(browser_window->widget());
+                session_save(*browser_window);
             }
             browser_window->prepare_for_shutdown();
             break;
