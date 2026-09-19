@@ -19,7 +19,6 @@
 #include <mozilla/gfx/Factory.h>
 #include <gfxContext.h>
 #include <WindowRenderer.h>
-#include <PuppetWidget.h>
 #include <cstring>
 #include <utility>
 #include <stdexcept>
@@ -345,19 +344,23 @@ void GeckoEngine::ensure_render_target(int width, int height) {
 void GeckoEngine::render_frame() {
     if (!gecko_widget_ || !render_target_) return;
 
-    auto* puppet =
-        static_cast<mozilla::widget::PuppetWidget*>(gecko_widget_);
-    if (!puppet) return;
-
     auto* renderer = gecko_widget_->GetWindowRenderer();
     if (!renderer) return;
 
-    if (auto* fallback = renderer->AsFallback()) {
-        gfxContext context(render_target_);
-        fallback->SetTarget(&context);
-        puppet->Paint();
-        fallback->SetTarget(nullptr);
+    auto* fallback = renderer->AsFallback();
+    if (!fallback) return;
+
+    // PuppetWidget::Paint() is intentionally private in Gecko. The supported
+    // path is to invoke the widget's paint listener, which is the same path
+    // PuppetWidget uses internally.
+    gfxContext context(render_target_);
+    fallback->SetTarget(&context);
+
+    if (auto* listener = gecko_widget_->GetPaintListener()) {
+        listener->PaintWindow(gecko_widget_);
     }
+
+    fallback->SetTarget(nullptr);
 }
 
 void GeckoEngine::draw_render_surface(GtkDrawingArea*, cairo_t* cr,
