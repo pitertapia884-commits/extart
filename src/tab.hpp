@@ -12,7 +12,7 @@ class Profile;
 
 class Tab {
 public:
-    Tab(BrowserWindow& window, Profile& profile);
+    Tab(BrowserWindow& window, std::unique_ptr<BrowserEngine> engine);
     ~Tab();
 
     Tab(const Tab&) = delete;
