@@ -105,3 +105,26 @@ then:
 EXTART is not considered Gecko-powered until the content displayed inside EXTART's own tab surface is rendered by Gecko.
 
 Finding or launching a Firefox executable is not sufficient.
+
+## Verified Mozilla embedding constraints
+
+The pinned Mozilla revision exposes `nsIWindowlessBrowser` as an embedding
+interface derived from `nsIWebNavigation`. It owns an associated docshell and
+BrowsingContext and requires `close()` before its final reference is released.
+
+EXTART therefore treats the following as hard implementation boundaries:
+
+1. Gecko initialization and XPCOM lifetime must be owned by the Gecko backend.
+2. Each EXTART tab must own a real Gecko browsing context/docshell.
+3. Navigation must be delegated to Gecko's navigation interfaces, not simulated
+   in EXTART.
+4. The GTK content widget must be connected to Gecko's native widget/rendering
+   path before the Gecko backend can replace WebKit.
+5. Cross-process navigation must be allowed to follow Gecko's own
+   BrowserHost/BrowserParent/BrowserChild architecture rather than forcing a
+   single-process design.
+6. Shutdown must explicitly close each windowless browser before releasing it.
+
+The current `GeckoEngine` remains intentionally non-functional until the
+Gecko headers and libraries from the pinned source revision are available.
+This avoids shipping code that merely compiles against guessed Mozilla APIs.
