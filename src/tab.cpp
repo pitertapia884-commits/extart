@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -78,6 +79,34 @@ gpointer Tab::native_view() const {
 
 GtkWidget* Tab::tab_control() const { return tab_control_; }
 
+std::string Tab::current_uri() const {
+    return engine_ ? engine_->current_uri() : std::string();
+}
+
+std::string Tab::current_title() const {
+    return engine_ ? engine_->current_title() : std::string();
+}
+
+bool Tab::can_go_back() const {
+    return engine_ && engine_->can_go_back();
+}
+
+bool Tab::can_go_forward() const {
+    return engine_ && engine_->can_go_forward();
+}
+
+void Tab::go_back() {
+    if (engine_) engine_->go_back();
+}
+
+void Tab::go_forward() {
+    if (engine_) engine_->go_forward();
+}
+
+void Tab::reload() {
+    if (engine_) engine_->reload();
+}
+
 void Tab::apply_config() {
     if (engine_) engine_->apply_config(window_.config());
 
@@ -127,13 +156,42 @@ void Tab::load_uri(const char* uri) {
 }
 
 void Tab::set_title(const char* title) {
-    gtk_label_set_text(GTK_LABEL(title_label_), title && *title ? title : "New tab");
+    if (title_label_ != nullptr) {
+        gtk_label_set_text(GTK_LABEL(title_label_), title && *title ? title : "New tab");
+    }
 }
 
 void Tab::set_active(bool active) {
     active_ = active;
     if (active) gtk_widget_add_css_class(select_button_, "active-tab");
     else gtk_widget_remove_css_class(select_button_, "active-tab");
+}
+
+void Tab::touch_activity() {
+    last_activity_ = static_cast<std::uint64_t>(g_get_monotonic_time());
+}
+
+void Tab::suspend() {
+    if (suspended_) return;
+    saved_uri_ = current_uri();
+    saved_title_ = current_title();
+    suspended_ = true;
+}
+
+void Tab::resume() {
+    if (!suspended_) return;
+    suspended_ = false;
+    if (!saved_uri_.empty()) load_uri(saved_uri_.c_str());
+    if (!saved_title_.empty()) set_title(saved_title_.c_str());
+    touch_activity();
+}
+
+bool Tab::is_suspended() const {
+    return suspended_;
+}
+
+bool Tab::can_suspend() const {
+    return !active_ && !suspended_;
 }
 
 void Tab::on_tab_selected(GtkButton*, gpointer user_data) {
