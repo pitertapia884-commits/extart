@@ -27,6 +27,11 @@ public:
     std::filesystem::path runtime_binary_dir() const;
     std::filesystem::path runtime_resource_dir() const;
 
+    // A built Mozilla tree should expose the generated embedding headers and
+    // the runtime binary directory. This is only a readiness check; it never
+    // executes the Firefox binary.
+    bool runtime_ready() const;
+
     const std::string& last_error() const { return last_error_; }
 
 private:
