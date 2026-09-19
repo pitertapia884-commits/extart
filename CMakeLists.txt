@@ -50,6 +50,8 @@ add_executable(extart
     src/settings_window.cpp
     src/session_manager.cpp
     src/gecko_backend.cpp
+    src/gecko_engine.hpp
+    src/gecko_engine.cpp
     ${GRESOURCE_C}
 )
 
