@@ -21,6 +21,7 @@ The migration is being done in small, buildable stages. The current code intenti
 - WebKit-specific navigation and download code has been moved behind engine/backend boundaries.
 - `GeckoBackend` now represents a **Gecko runtime directory**, not a Firefox executable.
 - EXTART does **not** launch Firefox as a substitute for embedding Gecko.
+- A Gecko source-tree bootstrap helper and native embedding checklist are now included.
 - Native Gecko embedding is the next engine implementation stage.
 
 ## Architecture target
@@ -92,15 +93,19 @@ cmake --build build
 
 ### Gecko development build
 
-Mozilla's Firefox source tree contains the Gecko engine and the native embedding contracts used by embedders. EXTART's Gecko integration is intended to use those engine components directly rather than starting Firefox as a separate application.
+Mozilla's official Firefox repository contains the Gecko source tree and the embedding contracts used by embedders. EXTART's Gecko integration is intended to use those engine components directly rather than starting Firefox as a separate application.
 
-The repository includes a bootstrap helper for preparing a Gecko source/build tree:
+Prepare the source tree with:
 
 ```bash
-./tools/bootstrap-gecko.sh
+bash tools/bootstrap-gecko.sh
 ```
 
-The script only prepares the source/build environment. It does not modify EXTART's runtime backend or claim that Gecko embedding is complete.
+Then follow the generated instructions in the script output.
+
+The helper only prepares the Gecko source/build environment. It does **not** modify EXTART's runtime backend or claim that Gecko embedding is complete.
+
+The native integration checklist is in `docs/GECKO_NATIVE_EMBEDDING.md`.
 
 ## Project philosophy
 
