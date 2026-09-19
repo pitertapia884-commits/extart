@@ -296,7 +296,10 @@ void GeckoEngine::ensure_render_target(int width, int height) {
     if (width <= 0 || height <= 0 || !gecko_widget_) return;
     if (render_target_ && render_width_ == width && render_height_ == height) return;
 
-    render_target_ = nullptr;
+    if (render_target_) {
+        render_target_->Release();
+        render_target_ = nullptr;
+    }
     render_width_ = width;
     render_height_ = height;
     render_stride_ = static_cast<std::size_t>(width) * 4u;
