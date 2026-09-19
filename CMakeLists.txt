@@ -9,6 +9,11 @@ pkg_check_modules(GTK4 REQUIRED gtk4)
 pkg_check_modules(WEBKIT REQUIRED webkitgtk-6.0)
 find_program(GLIB_COMPILE_RESOURCES glib-compile-resources REQUIRED)
 
+# Gecko migration boundary. Gecko itself is built separately from Mozilla's
+# source tree; EXTART keeps its GTK4 UI independent from Firefox's desktop UI.
+# The current WebKit backend remains temporarily compiled while the embedding
+# layer is being replaced with the native Gecko integration.
+
 set(GRESOURCE_XML ${CMAKE_CURRENT_SOURCE_DIR}/resources/extart.gresource.xml)
 set(GRESOURCE_C ${CMAKE_CURRENT_BINARY_DIR}/extart-resources.c)
 
@@ -42,6 +47,7 @@ add_executable(extart
     src/downloads_panel.cpp
     src/settings_window.cpp
     src/session_manager.cpp
+    src/gecko_backend.cpp
     ${GRESOURCE_C}
 )
 
