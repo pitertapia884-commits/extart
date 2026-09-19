@@ -101,6 +101,13 @@ if(EXTART_ENABLE_GECKO)
     target_include_directories(extart PRIVATE
         ${EXTART_GECKO_INCLUDE}
         ${EXTART_GECKO_INCLUDE}/nspr
+        ${EXTART_GECKO_ROOT}
+        ${EXTART_GECKO_ROOT}/widget
+        ${EXTART_GECKO_ROOT}/layout/base
+        ${EXTART_GECKO_ROOT}/layout/painting
+        ${EXTART_GECKO_ROOT}/gfx/thebes
+        ${EXTART_GECKO_ROOT}/gfx/2d
+        ${EXTART_GECKO_ROOT}/docshell/base
     )
     target_compile_definitions(extart PRIVATE
         EXTART_ENABLE_GECKO=1
