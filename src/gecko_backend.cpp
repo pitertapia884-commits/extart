@@ -1,61 +1,21 @@
 #include "gecko_backend.hpp"
 
-#include <cstdlib>
-#include <filesystem>
-#include <string>
-#include <unistd.h>
+#include <system_error>
 
-namespace {
+bool GeckoBackend::configure(const std::filesystem::path& runtime_root) {
+    runtime_root_.clear();
 
-bool is_executable_file(const std::filesystem::path& path) {
+    if (runtime_root.empty()) return false;
+
     std::error_code error;
-    return std::filesystem::is_regular_file(path, error) &&
-           !error &&
-           ::access(path.c_str(), X_OK) == 0;
-}
+    if (!std::filesystem::exists(runtime_root, error) || error) return false;
+    if (!std::filesystem::is_directory(runtime_root, error) || error) return false;
 
-} // namespace
-
-bool GeckoBackend::available() const {
-    return !executable_.empty();
-}
-
-bool GeckoBackend::locate() {
-    executable_.clear();
-
-    const char* configured = std::getenv("EXTART_GECKO_RUNTIME");
-    if (configured != nullptr && *configured != '\0') {
-        if (is_executable_file(configured)) {
-            executable_ = configured;
-            return true;
-        }
+    runtime_root_ = std::filesystem::absolute(runtime_root, error);
+    if (error) {
+        runtime_root_.clear();
+        return false;
     }
 
-    const char* path = std::getenv("PATH");
-    if (path == nullptr) return false;
-
-    std::string paths(path);
-    std::size_t start = 0;
-    while (start <= paths.size()) {
-        const std::size_t end = paths.find(':', start);
-        const std::string directory = paths.substr(
-            start,
-            end == std::string::npos ? std::string::npos : end - start
-        );
-
-        for (const char* candidate : {"firefox", "firefox-nightly"}) {
-            std::filesystem::path executable = directory.empty()
-                ? std::filesystem::path(candidate)
-                : std::filesystem::path(directory) / candidate;
-            if (is_executable_file(executable)) {
-                executable_ = executable.string();
-                return true;
-            }
-        }
-
-        if (end == std::string::npos) break;
-        start = end + 1;
-    }
-
-    return false;
+    return true;
 }
