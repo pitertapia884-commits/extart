@@ -22,6 +22,14 @@ public:
     GtkWidget* tab_control() const;
     gpointer native_view() const;
 
+    std::string current_uri() const;
+    std::string current_title() const;
+    bool can_go_back() const;
+    bool can_go_forward() const;
+    void go_back();
+    void go_forward();
+    void reload();
+
     void load_home();
     void load_uri(const char* uri);
     void set_title(const char* title);
@@ -52,7 +60,6 @@ private:
     GtkWidget* select_button_ = nullptr;
     GtkWidget* title_label_ = nullptr;
 
-    // Saved state for suspended tabs
     std::string saved_uri_;
     std::string saved_title_;
     std::uint64_t last_activity_ = 0;
