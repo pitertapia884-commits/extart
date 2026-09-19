@@ -45,6 +45,7 @@ public:
 
     virtual void apply_config(const Config& config) = 0;
     virtual void setup_downloads(DownloadManager& manager) = 0;
+    virtual void clear_site_data() = 0;
 
 protected:
     BrowserEngine() = default;
@@ -78,6 +79,7 @@ public:
 
     void apply_config(const Config& config) override;
     void setup_downloads(DownloadManager& manager) override;
+    void clear_site_data() override;
 
 private:
     static void on_load_changed(struct _WebKitWebView* view,
