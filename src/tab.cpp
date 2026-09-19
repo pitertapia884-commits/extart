@@ -4,7 +4,6 @@
 #include "browser_window.hpp"
 #include "config.hpp"
 #include "download_manager.hpp"
-#include "profile.hpp"
 
 #include <algorithm>
 #include <string>
@@ -18,9 +17,9 @@ std::vector<Tab*>& live_tabs() {
 }
 }
 
-Tab::Tab(BrowserWindow& window, Profile& profile)
+Tab::Tab(BrowserWindow& window, std::unique_ptr<BrowserEngine> engine)
 : window_(window),
-  engine_(std::make_unique<WebKitEngine>(profile, window.config())) {
+  engine_(std::move(engine)) {
     BrowserEngine::Callbacks callbacks;
     callbacks.uri_changed = [this](const char* uri) {
         window_.tab_uri_changed(this, uri);
