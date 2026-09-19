@@ -1,10 +1,13 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 
-// Gecko integration boundary for EXTART.
-// Gecko is kept behind this small interface so the GTK4 UI does not depend on
-// Firefox's desktop UI. The concrete runtime is configured separately.
+// Native Gecko integration boundary for EXTART.
+//
+// This class describes the Gecko runtime that EXTART will embed. It does not
+// launch Firefox and it does not treat an external Firefox process as an
+// embedded engine.
 class GeckoBackend {
 public:
     GeckoBackend() = default;
@@ -13,10 +16,11 @@ public:
     GeckoBackend(const GeckoBackend&) = delete;
     GeckoBackend& operator=(const GeckoBackend&) = delete;
 
-    bool available() const;
-    bool locate();
-    const std::string& executable() const { return executable_; }
+    bool configure(const std::filesystem::path& runtime_root);
+    bool configured() const { return !runtime_root_.empty(); }
+
+    const std::filesystem::path& runtime_root() const { return runtime_root_; }
 
 private:
-    std::string executable_;
+    std::filesystem::path runtime_root_;
 };
