@@ -1,6 +1,7 @@
 #include "browser_window.hpp"
 
 #include "bookmarks.hpp"
+#include "browser_engine.hpp"
 #include "bookmarks_panel.hpp"
 #include "config.hpp"
 #include "download_manager.hpp"
@@ -202,7 +203,7 @@ void BrowserWindow::restore_session_uris(const std::vector<std::string>& uris) {
 }
 
 Tab& BrowserWindow::open_tab() {
-    auto tab = std::make_unique<Tab>(*this, profile_);
+    auto tab = std::make_unique<Tab>(*this, make_browser_engine(profile_, config_));
     Tab& result = *tab;
 
     GtkWidget* previous_control = tabs_.empty() ? nullptr : tabs_.back()->tab_control();
