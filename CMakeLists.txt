@@ -17,36 +17,31 @@ if(NOT EXTART_GECKO_ROOT)
     message(FATAL_ERROR "EXTART requires -DEXTART_GECKO_ROOT=/path/to/gecko")
 endif()
 
-    set(EXTART_GECKO_ROOT "" CACHE PATH "Root of the EXTART Gecko build/source tree")
-    set(EXTART_GECKO_REVISION "b16f852ba66d190cacd42d0d43ac4d38bd07c4bd"
-        CACHE STRING "Mozilla source revision expected by EXTART Gecko embedding work")
-    if(NOT IS_DIRECTORY "${EXTART_GECKO_ROOT}")
-        message(FATAL_ERROR "EXTART_GECKO_ROOT does not exist: ${EXTART_GECKO_ROOT}")
-    endif()
-
-    set(EXTART_GECKO_DIST "${EXTART_GECKO_ROOT}/obj-extart/dist")
-    set(EXTART_GECKO_INCLUDE "${EXTART_GECKO_DIST}/include")
-    set(EXTART_GECKO_LIB "${EXTART_GECKO_DIST}/bin/libxul.so")
-
-    if(NOT IS_DIRECTORY "${EXTART_GECKO_INCLUDE}")
-        message(FATAL_ERROR "Gecko generated headers are missing: ${EXTART_GECKO_INCLUDE}")
-    endif()
-
-    if(NOT IS_DIRECTORY "${EXTART_GECKO_DIST}/bin")
-        message(FATAL_ERROR "Gecko runtime directory is missing: ${EXTART_GECKO_DIST}/bin")
-    endif()
-
-    if(NOT EXISTS "${EXTART_GECKO_LIB}")
-        message(FATAL_ERROR "Gecko libxul is missing: ${EXTART_GECKO_LIB}")
-    endif()
-
-    message(STATUS "EXTART Gecko source: ${EXTART_GECKO_ROOT}")
-    message(STATUS "EXTART Gecko revision: ${EXTART_GECKO_REVISION}")
+if(NOT IS_DIRECTORY "${EXTART_GECKO_ROOT}")
+    message(FATAL_ERROR "EXTART_GECKO_ROOT does not exist: ${EXTART_GECKO_ROOT}")
 endif()
+
+set(EXTART_GECKO_DIST "${EXTART_GECKO_ROOT}/obj-extart/dist")
+set(EXTART_GECKO_INCLUDE "${EXTART_GECKO_DIST}/include")
+set(EXTART_GECKO_LIB "${EXTART_GECKO_DIST}/bin/libxul.so")
+
+if(NOT IS_DIRECTORY "${EXTART_GECKO_INCLUDE}")
+    message(FATAL_ERROR "Gecko generated headers are missing: ${EXTART_GECKO_INCLUDE}")
+endif()
+
+if(NOT IS_DIRECTORY "${EXTART_GECKO_DIST}/bin")
+    message(FATAL_ERROR "Gecko runtime directory is missing: ${EXTART_GECKO_DIST}/bin")
+endif()
+
+if(NOT EXISTS "${EXTART_GECKO_LIB}")
+    message(FATAL_ERROR "Gecko libxul is missing: ${EXTART_GECKO_LIB}")
+endif()
+
+message(STATUS "EXTART Gecko source: ${EXTART_GECKO_ROOT}")
+message(STATUS "EXTART Gecko revision: ${EXTART_GECKO_REVISION}")
 
 # Gecko migration boundary. Gecko itself is built separately from Mozilla's
 # source tree; EXTART keeps its GTK4 UI independent from Firefox's desktop UI.
-# Native Gecko is the only browser engine. The GTK4 UI remains engine-neutral.
 
 set(GRESOURCE_XML ${CMAKE_CURRENT_SOURCE_DIR}/resources/extart.gresource.xml)
 set(GRESOURCE_C ${CMAKE_CURRENT_BINARY_DIR}/extart-resources.c)
@@ -91,22 +86,21 @@ add_executable(extart
 target_include_directories(extart PRIVATE
     ${GTK4_INCLUDE_DIRS}
     src/
+    ${EXTART_GECKO_INCLUDE}
+    ${EXTART_GECKO_INCLUDE}/nspr
+    ${EXTART_GECKO_ROOT}
+    ${EXTART_GECKO_ROOT}/widget
+    ${EXTART_GECKO_ROOT}/layout/base
+    ${EXTART_GECKO_ROOT}/layout/painting
+    ${EXTART_GECKO_ROOT}/gfx/thebes
+    ${EXTART_GECKO_ROOT}/gfx/2d
+    ${EXTART_GECKO_ROOT}/docshell/base
 )
 
-target_include_directories(extart PRIVATE
-        ${EXTART_GECKO_INCLUDE}
-        ${EXTART_GECKO_INCLUDE}/nspr
-        ${EXTART_GECKO_ROOT}
-        ${EXTART_GECKO_ROOT}/widget
-        ${EXTART_GECKO_ROOT}/layout/base
-        ${EXTART_GECKO_ROOT}/layout/painting
-        ${EXTART_GECKO_ROOT}/gfx/thebes
-        ${EXTART_GECKO_ROOT}/gfx/2d
-        ${EXTART_GECKO_ROOT}/docshell/base
-    )
 target_compile_definitions(extart PRIVATE
     EXTART_ENABLE_GECKO=1
-    EXTART_GECKO_REVISION="${EXTART_GECKO_REVISION}")
+    EXTART_GECKO_REVISION="${EXTART_GECKO_REVISION}"
+)
 
 target_link_libraries(extart PRIVATE
     ${GTK4_LIBRARIES}
@@ -114,9 +108,9 @@ target_link_libraries(extart PRIVATE
 )
 
 set_target_properties(extart PROPERTIES
-        BUILD_RPATH "${EXTART_GECKO_DIST}/bin"
-        INSTALL_RPATH "${EXTART_GECKO_DIST}/bin")
-endif()
+    BUILD_RPATH "${EXTART_GECKO_DIST}/bin"
+    INSTALL_RPATH "${EXTART_GECKO_DIST}/bin"
+)
 
 target_compile_options(extart PRIVATE
     ${GTK4_CFLAGS_OTHER}
