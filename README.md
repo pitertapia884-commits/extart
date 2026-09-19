@@ -6,24 +6,49 @@
 
 A minimal web browser for Linux focused on simplicity, efficiency, stability, and low resource usage.
 
-EXTART is built with **C++17**, **GTK4**, and **WebKitGTK 6.0**.
+## Engine migration: Gecko
 
-## Current version: 0.2
+EXTART is being migrated from **WebKitGTK 6.0 to Gecko**, while keeping the browser's **GTK4 native UI**.
 
-### What's new in 0.2
-- ⚡ **50% less RAM consumption** - Optimized WebKit memory settings
-- 📜 **History** - Browse your visited pages
-- 📥 **Download Manager** - Automatic downloads handling
-- 📚 **Bookmarks** - Save your favorite sites
-- 🔍 **Find in page** - Search within web pages (Ctrl+F)
-- ⌨️ **Keyboard shortcuts** - Ctrl+T, Ctrl+W, Ctrl+Tab, Ctrl+L
-- 🖥️ **System integration** - .desktop file for app menu
+The goal is to use Gecko's web platform — HTML/CSS, JavaScript, networking, DOM, graphics, security, and multi-process architecture — without carrying Firefox's desktop browser UI and services into EXTART. Gecko itself provides the core web engine and process infrastructure used by Firefox. citeturn1view0
 
-## Features
+The migration is intentionally being done in stages. Mozilla's current Linux documentation describes building Gecko through the Firefox source tree with `./mach build`; a full Gecko build needs substantial disk space and recommends 8 GB or more of RAM. citeturn1view1
 
-Currently implemented:
+### Current migration state
 
-- Web browsing with WebKitGTK
+- GTK4 UI remains the EXTART application layer.
+- A dedicated `GeckoBackend` integration boundary has been added.
+- EXTART can locate a configured Gecko/Firefox runtime through `EXTART_GECKO_RUNTIME` or the normal Linux `PATH`.
+- The old WebKitGTK backend is still present temporarily so the repository remains buildable while the native Gecko embedding layer is developed.
+- **The browser content is not yet claimed to be Gecko-rendered.** The next stage is the actual native Gecko embedding/process integration.
+
+This separation is deliberate: Mozilla's current source documentation describes Gecko's browser-process architecture and its internal embedding/navigation pieces, but there is no current drop-in GTK4 `WebKitWebView`-style Gecko widget for Linux. citeturn1view0turn6search0
+
+## Architecture target
+
+```text
+EXTART
+├── GTK4 UI
+│   ├── windows
+│   ├── tabs
+│   ├── URL/search bar
+│   ├── bookmarks
+│   ├── history
+│   ├── downloads
+│   └── settings
+│
+└── Gecko
+    ├── HTML / CSS
+    ├── SpiderMonkey
+    ├── DOM / Web APIs
+    ├── Necko networking
+    ├── graphics / WebRender
+    ├── security / sandbox
+    └── multi-process IPC
+```
+
+## Existing browser features
+
 - Multiple tabs and windows
 - Back / Forward / Reload
 - Address and search bar
@@ -33,11 +58,11 @@ Currently implemented:
 - Linux XDG directory support
 - GTK4 interface
 - Embedded resources using GResource
-- **NEW: History tracking**
-- **NEW: Download management**
-- **NEW: Bookmarks**
-- **NEW: Page search (Ctrl+F)**
-- **NEW: Better keyboard shortcuts**
+- History tracking
+- Download management
+- Bookmarks
+- Page search (Ctrl+F)
+- Keyboard shortcuts
 
 ## Build
 
@@ -47,7 +72,8 @@ Currently implemented:
 - C++17 compiler
 - CMake
 - GTK4
-- WebKitGTK 6.0
+- WebKitGTK 6.0 (temporary migration dependency)
+- Gecko source/build environment for the native engine integration
 
 ### Compile
 
@@ -59,43 +85,16 @@ cmake -S . -B build
 cmake --build build
 ```
 
-## Run
+For Gecko development itself, Mozilla documents the `./mach build` workflow in the Firefox source tree. citeturn1view1
 
-After building:
-
-```bash
-./build/extart
-```
-
-### Install .desktop file (optional)
-
-```bash
-mkdir -p ~/.local/share/applications
-cp extart.desktop ~/.local/share/applications/
-```
-
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| Ctrl+N | New window |
-| Ctrl+T | New tab |
-| Ctrl+W | Close tab |
-| Ctrl+Tab | Next tab |
-| Ctrl+Shift+Tab | Previous tab |
-| Ctrl+L | Focus address bar |
-| Ctrl+F | Find in page |
-
-## Project Philosophy
-
-EXTART aims to be a browser that respects the user's resources.
+## Project philosophy
 
 > Use only what is necessary for browsing, and remove everything that does not directly contribute to it.
 
 The main priorities are:
 
 - **Simplicity** - Minimal UI, straightforward navigation
-- **Efficiency** - Low RAM and CPU usage (50% less memory than Firefox with multiple tabs)
+- **Efficiency** - Low RAM and CPU usage
 - **Stability** - Reliable and predictable behavior
 - **Speed** - Fast startup and page loading
 
@@ -103,65 +102,32 @@ EXTART is not intended to compete with large browsers by adding more features. E
 
 ## Configuration
 
-Settings are stored in `~/.config/extart/settings.ini`:
+Settings are stored in `~/.config/extart/settings.ini`.
 
-```ini
-[General]
-search-engine=https://www.google.com/search?q=
-download-directory=/home/user/Downloads
-theme=system
-```
-
-## Data Storage
+## Data storage
 
 EXTART respects XDG directory standards:
 
 - **Config:** `~/.config/extart/`
 - **Data:** `~/.local/share/extart/`
-  - `history.csv` - Visit history
-  - `bookmarks.csv` - Bookmarked sites
 - **Cache:** `~/.cache/extart/`
-- **Cookies:** Stored in web data directory
 
-## Memory Usage
+## Gecko integration
 
-EXTART is optimized for memory efficiency:
+The runtime can be explicitly selected with:
 
-- Single tab: ~80-100MB
-- Multiple tabs: ~100-150MB for 3-4 tabs
-- Compared to Firefox: ~50% less memory usage
+```bash
+EXTART_GECKO_RUNTIME=/path/to/gecko-runtime ./build/extart
+```
 
-This is achieved through:
-- Disabled WebGL (saves 30-50MB per tab)
-- Reduced memory cache model
-- Explicit memory cleanup
+If that variable is not set, EXTART searches `PATH` for `firefox` and `firefox-nightly`.
 
-For comparison, Firefox uses ~200-300MB for similar workload.
-
-## Current Status
-
-EXTART 0.2 is a functional, feature-complete browser for everyday use. Focus has been on:
-1. Reducing memory consumption
-2. Adding essential features (history, bookmarks, downloads)
-3. Improving keyboard navigation
-
-## Roadmap
-
-- **0.3** - UI polish (find toolbar, download panel)
-- **0.4** - Session restore, theme improvements
-- **0.5** - Performance optimizations
-- **1.0** - Feature freeze, stability focus
+This runtime discovery is only the first integration layer. It does not pretend that launching Firefox is equivalent to embedding Gecko; the native content-view embedding remains the next engineering step.
 
 ## License
 
 License not decided yet.
 
-## Contributing
-
-Contributions welcome. Keep the philosophy in mind: simplicity and efficiency first.
-
 ---
-
-Made with ❤️ for users who prefer minimal, efficient tools.
 
 The logo is a toaster 🍞 — simple, reliable, does one thing well.
