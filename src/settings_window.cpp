@@ -134,24 +134,11 @@ void SettingsWindow::save() {
     config_.set_popups_enabled(gtk_check_button_get_active(GTK_CHECK_BUTTON(popups_)));
     config_.save();
 
-    // Los WebViews ya abiertos reciben la nueva configuración inmediatamente.
     Tab::apply_config_to_all_tabs();
 }
 
 void SettingsWindow::clear_site_data() {
-    WebKitWebsiteDataManager* manager =
-        webkit_network_session_get_website_data_manager(profile_.network_session());
-
-    if (manager == nullptr) return;
-
-    webkit_website_data_manager_clear(
-        manager,
-        WEBKIT_WEBSITE_DATA_ALL,
-        0,
-        nullptr,
-        nullptr,
-        nullptr
-    );
+    Tab::clear_site_data_to_all_tabs();
 }
 
 void SettingsWindow::on_save_clicked(GtkButton*, gpointer user_data) {
