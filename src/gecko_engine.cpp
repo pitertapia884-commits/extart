@@ -15,6 +15,13 @@
 #include <nsString.h>
 #include <nsIWidget.h>
 #include <mozilla/dom/LoadURIOptions.h>
+#include <mozilla/gfx/2D.h>
+#include <mozilla/gfx/Factory.h>
+#include <gfxContext.h>
+#include <WindowRenderer.h>
+#include <PuppetWidget.h>
+#include <cstring>
+#include <memory>
 
 #include <utility>
 
@@ -86,6 +93,13 @@ GeckoEngine::GeckoEngine(GeckoBackend& backend, Profile& profile, const Config& 
     gecko_widget_->Resize(1, 1, true);
     gecko_widget_->Show(true);
 
+    render_widget_ = gtk_drawing_area_new();
+    gtk_widget_set_hexpand(render_widget_, TRUE);
+    gtk_widget_set_vexpand(render_widget_, TRUE);
+    gtk_drawing_area_set_draw_func(GTK_DRAWING_AREA(render_widget_),
+                                   draw_render_surface, this, nullptr);
+    render_source_id_ = g_timeout_add(16, render_tick, this);
+
     // Force creation of Gecko's native WindowRenderer. PuppetWidget uses a
     // fallback renderer in the parent process at this embedding boundary;
     // keeping this explicit prevents the GTK bridge from silently operating
@@ -103,6 +117,14 @@ GeckoEngine::GeckoEngine(GeckoBackend& backend, Profile& profile, const Config& 
 }
 
 GeckoEngine::~GeckoEngine() {
+    if (render_source_id_ != 0) {
+        g_source_remove(render_source_id_);
+        render_source_id_ = 0;
+    }
+    render_target_ = nullptr;
+    render_pixels_.reset();
+    render_widget_ = nullptr;
+
     if (gecko_widget_) {
         gecko_widget_->Show(false);
         gecko_widget_->Release();
@@ -121,10 +143,7 @@ GeckoEngine::~GeckoEngine() {
 }
 
 GtkWidget* GeckoEngine::widget() const {
-    // A Gecko PuppetWidget is not a GtkWidget. Returning it here would be an
-    // invalid cast and would make GTK own something it does not own.
-    // The GTK4 rendering bridge is the next stage.
-    return nullptr;
+    return render_widget_;
 }
 
 gpointer GeckoEngine::native_handle() const {
@@ -271,3 +290,78 @@ void GeckoEngine::apply_config(const Config&) {}
 void GeckoEngine::setup_downloads(DownloadManager&) {}
 
 void GeckoEngine::clear_site_data() {}
+
+
+void GeckoEngine::ensure_render_target(int width, int height) {
+    if (width <= 0 || height <= 0 || !gecko_widget_) return;
+    if (render_target_ && render_width_ == width && render_height_ == height) return;
+
+    render_target_ = nullptr;
+    render_width_ = width;
+    render_height_ = height;
+    render_stride_ = static_cast<std::size_t>(width) * 4u;
+    render_pixels_ = std::make_unique<unsigned char[]>(
+        render_stride_ * static_cast<std::size_t>(height));
+    std::memset(render_pixels_.get(), 0,
+                render_stride_ * static_cast<std::size_t>(height));
+
+    RefPtr<mozilla::gfx::DrawTarget> target =
+        mozilla::gfx::Factory::CreateDrawTargetForData(
+            mozilla::gfx::BackendType::CAIRO,
+            render_pixels_.get(),
+            mozilla::gfx::IntSize(width, height),
+            static_cast<int32_t>(render_stride_),
+            mozilla::gfx::SurfaceFormat::B8G8R8A8);
+    if (!target) return;
+
+    render_target_ = target.get();
+    render_target_->AddRef();
+    gecko_widget_->Resize(width, height, true);
+}
+
+void GeckoEngine::render_frame() {
+    if (!gecko_widget_ || !render_target_) return;
+
+    auto* puppet =
+        static_cast<mozilla::widget::PuppetWidget*>(gecko_widget_);
+    if (!puppet) return;
+
+    auto* renderer = gecko_widget_->GetWindowRenderer();
+    if (!renderer) return;
+
+    if (auto* fallback = renderer->AsFallback()) {
+        gfxContext context(render_target_);
+        fallback->SetTarget(&context);
+        puppet->Paint();
+        fallback->SetTarget(nullptr);
+    }
+}
+
+void GeckoEngine::draw_render_surface(GtkDrawingArea*, cairo_t* cr,
+                                      int width, int height,
+                                      gpointer user_data) {
+    auto* engine = static_cast<GeckoEngine*>(user_data);
+    if (!engine) return;
+
+    engine->ensure_render_target(width, height);
+    engine->render_frame();
+    if (!engine->render_pixels_) return;
+
+    cairo_surface_t* surface = cairo_image_surface_create_for_data(
+        engine->render_pixels_.get(),
+        CAIRO_FORMAT_ARGB32,
+        engine->render_width_,
+        engine->render_height_,
+        static_cast<int>(engine->render_stride_));
+    cairo_set_source_surface(cr, surface, 0, 0);
+    cairo_paint(cr);
+    cairo_surface_destroy(surface);
+}
+
+gboolean GeckoEngine::render_tick(gpointer user_data) {
+    auto* engine = static_cast<GeckoEngine*>(user_data);
+    if (!engine || !engine->render_widget_) return G_SOURCE_REMOVE;
+    engine->render_frame();
+    gtk_widget_queue_draw(engine->render_widget_);
+    return G_SOURCE_CONTINUE;
+}
