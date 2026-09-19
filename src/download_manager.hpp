@@ -1,10 +1,14 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <webkit/webkit.h>
+
+#include <ctime>
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
-#include <ctime>
+
+class DownloadBackend;
 
 struct Download {
     std::string filename;
@@ -24,7 +28,9 @@ public:
     DownloadManager(const DownloadManager&) = delete;
     DownloadManager& operator=(const DownloadManager&) = delete;
 
-    void setup_for_web_view(WebKitWebView* web_view);
+    void set_backend(std::unique_ptr<DownloadBackend> backend);
+    void clear_backend();
+
     const std::vector<Download>& downloads() const;
     const std::string& download_directory() const;
     void set_download_directory(const std::string& path);
@@ -32,31 +38,18 @@ public:
     void set_parent_window(GtkWindow* window);
     void clear_old_downloads();
 
+    bool ask_download_location() const;
+    GtkWindow* parent_window() const;
+
+    void add_download(Download entry);
+    void mark_download_path(const std::string& uri, const std::string& path);
+    void mark_download_finished(const std::string& uri, const std::string& path);
+    void report_download_failed(const std::string& message);
+
 private:
-    struct PendingDestination {
-        DownloadManager* manager = nullptr;
-        WebKitDownload* download = nullptr;
-        std::string uri;
-    };
-
-    static void on_download_started(WebKitNetworkSession* session,
-                                    WebKitDownload* download,
-                                    gpointer user_data);
-    static gboolean on_download_decide_destination(WebKitDownload* download,
-                                                    const gchar* suggested_filename,
-                                                    gpointer user_data);
-    static void on_destination_selected(GObject* source,
-                                        GAsyncResult* result,
-                                        gpointer user_data);
-    static void on_download_finished(WebKitDownload* download,
-                                     gpointer user_data);
-    static void on_download_failed(WebKitDownload* download,
-                                   GError* error,
-                                   gpointer user_data);
-
     std::vector<Download> downloads_;
     std::string download_directory_;
-    WebKitNetworkSession* network_session_ = nullptr;
     GtkWindow* parent_window_ = nullptr;
     bool ask_download_location_ = false;
+    std::unique_ptr<DownloadBackend> backend_;
 };
