@@ -44,8 +44,6 @@ add_executable(extart
     src/history.cpp
     src/download_manager.cpp
     src/bookmarks.cpp
-    src/webkit_memory.cpp
-    src/memory_manager.cpp
     src/history_panel.cpp
     src/bookmarks_panel.cpp
     src/downloads_panel.cpp
