@@ -1,6 +1,6 @@
 #pragma once
 
-#include <gtk/gtk.h>
+class BrowserWindow;
 
-void session_save(GtkWidget* window);
-void session_restore(GtkWidget* window);
+void session_save(const BrowserWindow& window);
+void session_restore(BrowserWindow& window);
