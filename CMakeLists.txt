@@ -35,6 +35,8 @@ add_executable(extart
     src/extart_application.cpp
     src/browser_window.cpp
     src/tab.cpp
+    src/browser_engine.hpp
+    src/webkit_engine.cpp
     src/profile.cpp
     src/config.cpp
     src/history.cpp
