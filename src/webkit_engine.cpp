@@ -6,8 +6,39 @@
 #include "profile.hpp"
 
 #include <webkit/webkit.h>
+#include <filesystem>
+#include <system_error>
 
 #include <utility>
+#include <string>
+
+namespace {
+struct TemporaryWebKitState {
+    WebKitNetworkSession* network_session = nullptr;
+    WebKitWebContext* web_context = nullptr;
+};
+
+TemporaryWebKitState& temporary_webkit_state() {
+    static TemporaryWebKitState state;
+    if (state.network_session != nullptr) return state;
+
+    const auto data_directory = std::filesystem::path(g_get_user_data_dir()) / "extart" / "web-data";
+    const auto cache_directory = std::filesystem::path(g_get_user_cache_dir()) / "extart" / "web-cache";
+    const auto cookies_path = std::filesystem::path(g_get_user_data_dir()) / "extart" / "cookies.sqlite";
+    std::error_code error;
+    std::filesystem::create_directories(data_directory, error);
+    std::filesystem::create_directories(cache_directory, error);
+
+    state.network_session = webkit_network_session_new(data_directory.c_str(), cache_directory.c_str());
+    if (state.network_session != nullptr) {
+        auto* cookies = webkit_network_session_get_cookie_manager(state.network_session);
+        webkit_cookie_manager_set_persistent_storage(cookies, cookies_path.c_str(), WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);
+    }
+    state.web_context = WEBKIT_WEB_CONTEXT(g_object_new(WEBKIT_TYPE_WEB_CONTEXT, nullptr));
+    return state;
+}
+
+}
 
 namespace {
 
@@ -44,8 +75,8 @@ WebKitEngine::WebKitEngine(Profile& profile, const Config& config)
     WebKitUserContentManager* user_content_manager = create_whatsapp_compatibility_manager();
     web_view_ = GTK_WIDGET(g_object_new(
         WEBKIT_TYPE_WEB_VIEW,
-        "web-context", profile.web_context(),
-        "network-session", profile.network_session(),
+        "web-context", temporary_webkit_state().web_context,
+        "network-session", temporary_webkit_state().network_session,
         "user-content-manager", user_content_manager,
         nullptr));
     g_object_unref(user_content_manager);
@@ -161,12 +192,12 @@ void WebKitEngine::apply_config(const Config& config) {
 
 void WebKitEngine::setup_downloads(DownloadManager& manager) {
     if (web_view_ == nullptr) return;
-    manager.set_backend(make_webkit_download_backend(profile_.network_session()));
+    manager.set_backend(make_webkit_download_backend(temporary_webkit_state().network_session));
 }
 
 void WebKitEngine::clear_site_data() {
     WebKitWebsiteDataManager* manager =
-        webkit_network_session_get_website_data_manager(profile_.network_session());
+        webkit_network_session_get_website_data_manager(temporary_webkit_state().network_session);
 
     if (manager == nullptr) return;
 
