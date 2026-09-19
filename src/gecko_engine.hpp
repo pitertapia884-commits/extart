@@ -9,6 +9,8 @@ class GeckoRuntime;
 class nsIWindowlessBrowser;
 class nsIWebNavigation;
 class nsIWidget;
+class GtkWidget;
+namespace mozilla { namespace gfx { class DrawTarget; } }
 
 class GeckoEngine final : public BrowserEngine {
 public:
@@ -51,4 +53,18 @@ private:
     std::string current_uri_;
     std::string current_title_;
     std::string last_search_;
+
+    GtkWidget* render_widget_ = nullptr;
+    std::unique_ptr<unsigned char[]> render_pixels_;
+    std::size_t render_stride_ = 0;
+    int render_width_ = 0;
+    int render_height_ = 0;
+    mozilla::gfx::DrawTarget* render_target_ = nullptr;
+    unsigned int render_source_id_ = 0;
+
+    void ensure_render_target(int width, int height);
+    void render_frame();
+    static void draw_render_surface(GtkDrawingArea* area, cairo_t* cr,
+                                    int width, int height, gpointer user_data);
+    static gboolean render_tick(gpointer user_data);
 };
