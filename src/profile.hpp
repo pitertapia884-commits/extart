@@ -1,19 +1,22 @@
 #pragma once
 
-#include <webkit/webkit.h>
+#include <filesystem>
+#include <string>
 
 class Profile {
 public:
     Profile();
-    ~Profile();
+    ~Profile() = default;
 
     Profile(const Profile&) = delete;
     Profile& operator=(const Profile&) = delete;
 
-    WebKitNetworkSession* network_session() const;
-    WebKitWebContext* web_context() const;
+    const std::filesystem::path& data_directory() const { return data_directory_; }
+    const std::filesystem::path& cache_directory() const { return cache_directory_; }
+    const std::filesystem::path& cookies_path() const { return cookies_path_; }
 
 private:
-    WebKitNetworkSession* network_session_ = nullptr;
-    WebKitWebContext* web_context_ = nullptr;
+    std::filesystem::path data_directory_;
+    std::filesystem::path cache_directory_;
+    std::filesystem::path cookies_path_;
 };
