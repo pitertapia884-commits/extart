@@ -6,6 +6,7 @@
 
 #include <nsIAppShellService.h>
 #include <nsIWebNavigation.h>
+#include <nsIURI.h>
 #include <nsIWindowlessBrowser.h>
 #include <nsString.h>
 
