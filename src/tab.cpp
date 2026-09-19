@@ -1,9 +1,9 @@
 #include "tab.hpp"
 
 #include "browser_engine.hpp"
-#include "download_manager.hpp"
 #include "browser_window.hpp"
 #include "config.hpp"
+#include "download_manager.hpp"
 #include "profile.hpp"
 
 #include <algorithm>
@@ -32,8 +32,10 @@ Tab::Tab(BrowserWindow& window, Profile& profile)
         }
     });
 
-    web_view() ? gtk_widget_set_hexpand(web_view(), TRUE) : void();
-    web_view() ? gtk_widget_set_vexpand(web_view(), TRUE) : void();
+    if (web_view() != nullptr) {
+        gtk_widget_set_hexpand(web_view(), TRUE);
+        gtk_widget_set_vexpand(web_view(), TRUE);
+    }
 
     live_tabs().push_back(this);
     apply_config();
