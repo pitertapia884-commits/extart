@@ -21,8 +21,6 @@
 #include <WindowRenderer.h>
 #include <PuppetWidget.h>
 #include <cstring>
-#include <memory>
-
 #include <utility>
 
 namespace {
@@ -121,7 +119,10 @@ GeckoEngine::~GeckoEngine() {
         g_source_remove(render_source_id_);
         render_source_id_ = 0;
     }
-    render_target_ = nullptr;
+    if (render_target_) {
+        render_target_->Release();
+        render_target_ = nullptr;
+    }
     render_pixels_.reset();
     render_widget_ = nullptr;
 
